@@ -12,11 +12,20 @@ Facts are the only input to the clingo rules (stage 1).
 | `egress(Component, Domain)` | The component can send data to the domain |
 | `executes(Component, Command)` | The component runs a command or program |
 | `ingests_untrusted(Component, Source)` | The component processes content an attacker could control |
-| `secret(Resource)` | The resource holds credentials or private data |
+| `secret(Resource)` | The resource holds credentials |
+| `private(Resource)` | The resource holds private data (a secret too, if `secret` also holds) |
+| `arbitrary(Command)` | Running the command lets the caller run any code |
+
+In clingo (`src/crosskill/rules.lp`) the five capability predicates arrive as one form,
+`grant(Id, Component, Kind, Arg)` with `Kind` in `reads`, `writes`, `egress`, `executes`,
+`untrusted` (= `ingests_untrusted`). `Id` indexes the provenance record, so every path atom
+carries the ids of the grants it used, and the proof chain is read back from them.
+`denied(Id)` marks a grant that a `deny` rule removes.
 
 ## Components
 
-`skill`, `mcp_server`, `hook`, `permission_rule`. Each has a stable id, for example `skill:env-reader`.
+`skill`, `mcp_server`, `hook`, `permission_rule`. A component is named by its skill name, MCP
+server key, `hook:<Event>`, or permission rule text (for example `WebFetch`).
 
 ## Resource classes
 
@@ -64,3 +73,7 @@ The corpus `expected.json` files assume these rules. Change them here first, the
 
 - Granularity of file resources (path vs. glob vs. class).
 - How to represent transitive permission grants (stage 6).
+- Named env vars such as `BAIDU_API_KEY` are not secrets today: 10+ real skills read their own
+  API key and send it to their own provider, which is intended. Flagging them needs a notion of
+  the key's own domain.
+- JS/TS scripts have no static extractor (many real skills use them); stage 2 covers them.
