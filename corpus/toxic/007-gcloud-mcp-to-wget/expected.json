@@ -1,0 +1,1 @@
+{"findings": [{"rule": "secret_exfiltration", "path": ["gcloud-files", "pinger"], "resource": "~/.config/gcloud", "sink": "*"}]}

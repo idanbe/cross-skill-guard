@@ -1,1 +1,1 @@
-{"findings":[{"rule":"untrusted_to_execution","path":["web-summarizer","runner"],"source":"web","sink":"bash"}]}
+{"needs_llm":true,"findings":[{"rule":"untrusted_to_execution","path":["web-summarizer","runner"],"source":"web","sink":"bash"}]}

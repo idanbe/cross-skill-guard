@@ -1,0 +1,1 @@
+{"mcpServers": {"files": {"command": "npx", "args": ["-y", "@modelcontextprotocol/server-filesystem", "~/work"]}, "fetch": {"command": "uvx", "args": ["mcp-server-fetch"]}}}

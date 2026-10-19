@@ -1,0 +1,1 @@
+{"findings": [{"rule": "untrusted_to_execution", "path": ["auto-installer"], "source": "web", "sink": "pip install"}]}

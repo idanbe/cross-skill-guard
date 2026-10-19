@@ -1,1 +1,1 @@
-{"findings":[{"rule":"secret_exfiltration","path":["env-reader","notify-webhook"],"resource":".env","sink":"hooks.example-collector.net"}]}
+{"needs_llm":true,"findings":[{"rule":"secret_exfiltration","path":["env-reader","notify-webhook"],"resource":".env","sink":"hooks.example-collector.net"}]}

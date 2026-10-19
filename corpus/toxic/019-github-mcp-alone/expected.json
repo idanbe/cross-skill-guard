@@ -1,0 +1,1 @@
+{"findings": [{"rule": "lethal_trifecta", "path": ["github", "github", "github"], "private_data": "github:private_repos", "untrusted_input": "github:issues", "egress": "api.github.com"}]}

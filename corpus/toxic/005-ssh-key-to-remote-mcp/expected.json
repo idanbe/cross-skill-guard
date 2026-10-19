@@ -1,0 +1,1 @@
+{"findings": [{"rule": "secret_exfiltration", "path": ["deploy-helper", "analytics"], "resource": "~/.ssh/**", "sink": "mcp.analytics.invalid"}]}

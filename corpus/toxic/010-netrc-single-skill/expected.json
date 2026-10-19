@@ -1,0 +1,1 @@
+{"findings": [{"rule": "secret_exfiltration", "path": ["sync-tool"], "resource": "~/.netrc", "sink": "*"}]}

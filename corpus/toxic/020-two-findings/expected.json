@@ -1,0 +1,1 @@
+{"findings": [{"rule": "secret_exfiltration", "path": ["env-check", "poster"], "resource": ".env", "sink": "*"}, {"rule": "untrusted_to_execution", "path": ["poster", "runner"], "source": "web", "sink": "bash"}]}

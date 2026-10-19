@@ -1,0 +1,1 @@
+{"findings": [{"rule": "secret_exfiltration", "path": ["cost-report", "uploader"], "resource": "~/.aws/credentials", "sink": "*"}]}

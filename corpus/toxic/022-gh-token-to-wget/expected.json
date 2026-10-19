@@ -1,0 +1,1 @@
+{"based_on": "https://arxiv.org/abs/2601.10338 PE3 (credential access)", "findings": [{"rule": "secret_exfiltration", "path": ["gh-status", "pinger"], "resource": "~/.config/gh/hosts.yml", "sink": "*"}]}

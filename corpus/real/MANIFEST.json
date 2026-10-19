@@ -1,0 +1,954 @@
+{
+ "skills": [
+  {
+   "id": "skills.sh/vercel-labs/skills/find-skills",
+   "source": "skills.sh",
+   "repo": "vercel-labs/skills",
+   "commit": "13e4063a1cf913f5606d57d42ab83a86f5001e04",
+   "path": "skills/find-skills",
+   "license": "MIT",
+   "url": "https://skills.sh/vercel-labs/skills/find-skills"
+  },
+  {
+   "id": "skills.sh/mattpocock/skills/grill-me",
+   "source": "skills.sh",
+   "repo": "mattpocock/skills",
+   "commit": "49dd158d1076134a641b33efb035946536778336",
+   "path": "skills/productivity/grill-me",
+   "license": "MIT",
+   "url": "https://skills.sh/mattpocock/skills/grill-me"
+  },
+  {
+   "id": "skills.sh/mattpocock/skills/grill-with-docs",
+   "source": "skills.sh",
+   "repo": "mattpocock/skills",
+   "commit": "49dd158d1076134a641b33efb035946536778336",
+   "path": "skills/engineering/grill-with-docs",
+   "license": "MIT",
+   "url": "https://skills.sh/mattpocock/skills/grill-with-docs"
+  },
+  {
+   "id": "skills.sh/mattpocock/skills/improve-codebase-architecture",
+   "source": "skills.sh",
+   "repo": "mattpocock/skills",
+   "commit": "49dd158d1076134a641b33efb035946536778336",
+   "path": "skills/engineering/improve-codebase-architecture",
+   "license": "MIT",
+   "url": "https://skills.sh/mattpocock/skills/improve-codebase-architecture"
+  },
+  {
+   "id": "skills.sh/mattpocock/skills/tdd",
+   "source": "skills.sh",
+   "repo": "mattpocock/skills",
+   "commit": "49dd158d1076134a641b33efb035946536778336",
+   "path": "skills/engineering/tdd",
+   "license": "MIT",
+   "url": "https://skills.sh/mattpocock/skills/tdd"
+  },
+  {
+   "id": "skills.sh/mattpocock/skills/setup-matt-pocock-skills",
+   "source": "skills.sh",
+   "repo": "mattpocock/skills",
+   "commit": "49dd158d1076134a641b33efb035946536778336",
+   "path": "skills/engineering/setup-matt-pocock-skills",
+   "license": "MIT",
+   "url": "https://skills.sh/mattpocock/skills/setup-matt-pocock-skills"
+  },
+  {
+   "id": "skills.sh/mattpocock/skills/handoff",
+   "source": "skills.sh",
+   "repo": "mattpocock/skills",
+   "commit": "49dd158d1076134a641b33efb035946536778336",
+   "path": "skills/productivity/handoff",
+   "license": "MIT",
+   "url": "https://skills.sh/mattpocock/skills/handoff"
+  },
+  {
+   "id": "skills.sh/mattpocock/skills/triage",
+   "source": "skills.sh",
+   "repo": "mattpocock/skills",
+   "commit": "49dd158d1076134a641b33efb035946536778336",
+   "path": "skills/engineering/triage",
+   "license": "MIT",
+   "url": "https://skills.sh/mattpocock/skills/triage"
+  },
+  {
+   "id": "skills.sh/mattpocock/skills/prototype",
+   "source": "skills.sh",
+   "repo": "mattpocock/skills",
+   "commit": "49dd158d1076134a641b33efb035946536778336",
+   "path": "skills/engineering/prototype",
+   "license": "MIT",
+   "url": "https://skills.sh/mattpocock/skills/prototype"
+  },
+  {
+   "id": "skills.sh/mattpocock/skills/grilling",
+   "source": "skills.sh",
+   "repo": "mattpocock/skills",
+   "commit": "49dd158d1076134a641b33efb035946536778336",
+   "path": "skills/productivity/grilling",
+   "license": "MIT",
+   "url": "https://skills.sh/mattpocock/skills/grilling"
+  },
+  {
+   "id": "skills.sh/mattpocock/skills/domain-modeling",
+   "source": "skills.sh",
+   "repo": "mattpocock/skills",
+   "commit": "49dd158d1076134a641b33efb035946536778336",
+   "path": "skills/engineering/domain-modeling",
+   "license": "MIT",
+   "url": "https://skills.sh/mattpocock/skills/domain-modeling"
+  },
+  {
+   "id": "skills.sh/mattpocock/skills/teach",
+   "source": "skills.sh",
+   "repo": "mattpocock/skills",
+   "commit": "49dd158d1076134a641b33efb035946536778336",
+   "path": "skills/productivity/teach",
+   "license": "MIT",
+   "url": "https://skills.sh/mattpocock/skills/teach"
+  },
+  {
+   "id": "skills.sh/mattpocock/skills/codebase-design",
+   "source": "skills.sh",
+   "repo": "mattpocock/skills",
+   "commit": "49dd158d1076134a641b33efb035946536778336",
+   "path": "skills/engineering/codebase-design",
+   "license": "MIT",
+   "url": "https://skills.sh/mattpocock/skills/codebase-design"
+  },
+  {
+   "id": "skills.sh/mattpocock/skills/diagnosing-bugs",
+   "source": "skills.sh",
+   "repo": "mattpocock/skills",
+   "commit": "49dd158d1076134a641b33efb035946536778336",
+   "path": "skills/engineering/diagnosing-bugs",
+   "license": "MIT",
+   "url": "https://skills.sh/mattpocock/skills/diagnosing-bugs"
+  },
+  {
+   "id": "skills.sh/mattpocock/skills/code-review",
+   "source": "skills.sh",
+   "repo": "mattpocock/skills",
+   "commit": "49dd158d1076134a641b33efb035946536778336",
+   "path": "skills/engineering/code-review",
+   "license": "MIT",
+   "url": "https://skills.sh/mattpocock/skills/code-review"
+  },
+  {
+   "id": "skills.sh/mattpocock/skills/implement",
+   "source": "skills.sh",
+   "repo": "mattpocock/skills",
+   "commit": "49dd158d1076134a641b33efb035946536778336",
+   "path": "skills/engineering/implement",
+   "license": "MIT",
+   "url": "https://skills.sh/mattpocock/skills/implement"
+  },
+  {
+   "id": "skills.sh/mattpocock/skills/ask-matt",
+   "source": "skills.sh",
+   "repo": "mattpocock/skills",
+   "commit": "49dd158d1076134a641b33efb035946536778336",
+   "path": "skills/engineering/ask-matt",
+   "license": "MIT",
+   "url": "https://skills.sh/mattpocock/skills/ask-matt"
+  },
+  {
+   "id": "skills.sh/mattpocock/skills/wayfinder",
+   "source": "skills.sh",
+   "repo": "mattpocock/skills",
+   "commit": "49dd158d1076134a641b33efb035946536778336",
+   "path": "skills/engineering/wayfinder",
+   "license": "MIT",
+   "url": "https://skills.sh/mattpocock/skills/wayfinder"
+  },
+  {
+   "id": "skills.sh/mattpocock/skills/git-guardrails-claude-code",
+   "source": "skills.sh",
+   "repo": "mattpocock/skills",
+   "commit": "49dd158d1076134a641b33efb035946536778336",
+   "path": "skills/misc/git-guardrails-claude-code",
+   "license": "MIT",
+   "url": "https://skills.sh/mattpocock/skills/git-guardrails-claude-code"
+  },
+  {
+   "id": "skills.sh/mattpocock/skills/setup-pre-commit",
+   "source": "skills.sh",
+   "repo": "mattpocock/skills",
+   "commit": "49dd158d1076134a641b33efb035946536778336",
+   "path": "skills/misc/setup-pre-commit",
+   "license": "MIT",
+   "url": "https://skills.sh/mattpocock/skills/setup-pre-commit"
+  },
+  {
+   "id": "skills.sh/vercel-labs/agent-browser/agent-browser",
+   "source": "skills.sh",
+   "repo": "vercel-labs/agent-browser",
+   "commit": "dac13bb87468fe9d74a040d862720f6cc17a9565",
+   "path": "skills/agent-browser",
+   "license": "Apache-2.0",
+   "url": "https://skills.sh/vercel-labs/agent-browser/agent-browser"
+  },
+  {
+   "id": "skills.sh/heygen-com/hyperframes/hyperframes-cli",
+   "source": "skills.sh",
+   "repo": "heygen-com/hyperframes",
+   "commit": "cea0bad7931122bd93680006978c0d9007daa3d4",
+   "path": "skills/hyperframes-cli",
+   "license": "Apache-2.0",
+   "url": "https://skills.sh/heygen-com/hyperframes/hyperframes-cli"
+  },
+  {
+   "id": "skills.sh/heygen-com/hyperframes/hyperframes",
+   "source": "skills.sh",
+   "repo": "heygen-com/hyperframes",
+   "commit": "cea0bad7931122bd93680006978c0d9007daa3d4",
+   "path": "skills/hyperframes",
+   "license": "Apache-2.0",
+   "url": "https://skills.sh/heygen-com/hyperframes/hyperframes"
+  },
+  {
+   "id": "skills.sh/heygen-com/hyperframes/media-use",
+   "source": "skills.sh",
+   "repo": "heygen-com/hyperframes",
+   "commit": "cea0bad7931122bd93680006978c0d9007daa3d4",
+   "path": "skills/media-use",
+   "license": "Apache-2.0",
+   "url": "https://skills.sh/heygen-com/hyperframes/media-use"
+  },
+  {
+   "id": "skills.sh/heygen-com/hyperframes/hyperframes-animation",
+   "source": "skills.sh",
+   "repo": "heygen-com/hyperframes",
+   "commit": "cea0bad7931122bd93680006978c0d9007daa3d4",
+   "path": "skills/hyperframes-animation",
+   "license": "Apache-2.0",
+   "url": "https://skills.sh/heygen-com/hyperframes/hyperframes-animation"
+  },
+  {
+   "id": "skills.sh/heygen-com/hyperframes/hyperframes-registry",
+   "source": "skills.sh",
+   "repo": "heygen-com/hyperframes",
+   "commit": "cea0bad7931122bd93680006978c0d9007daa3d4",
+   "path": "skills/hyperframes-registry",
+   "license": "Apache-2.0",
+   "url": "https://skills.sh/heygen-com/hyperframes/hyperframes-registry"
+  },
+  {
+   "id": "skills.sh/heygen-com/hyperframes/hyperframes-core",
+   "source": "skills.sh",
+   "repo": "heygen-com/hyperframes",
+   "commit": "cea0bad7931122bd93680006978c0d9007daa3d4",
+   "path": "skills/hyperframes-core",
+   "license": "Apache-2.0",
+   "url": "https://skills.sh/heygen-com/hyperframes/hyperframes-core"
+  },
+  {
+   "id": "skills.sh/heygen-com/hyperframes/hyperframes-creative",
+   "source": "skills.sh",
+   "repo": "heygen-com/hyperframes",
+   "commit": "cea0bad7931122bd93680006978c0d9007daa3d4",
+   "path": "skills/hyperframes-creative",
+   "license": "Apache-2.0",
+   "url": "https://skills.sh/heygen-com/hyperframes/hyperframes-creative"
+  },
+  {
+   "id": "skills.sh/heygen-com/hyperframes/hyperframes-keyframes",
+   "source": "skills.sh",
+   "repo": "heygen-com/hyperframes",
+   "commit": "cea0bad7931122bd93680006978c0d9007daa3d4",
+   "path": "skills/hyperframes-keyframes",
+   "license": "Apache-2.0",
+   "url": "https://skills.sh/heygen-com/hyperframes/hyperframes-keyframes"
+  },
+  {
+   "id": "skills.sh/anthropics/skills/frontend-design",
+   "source": "skills.sh",
+   "repo": "anthropics/skills",
+   "commit": "dbd4588f9e1033efb41dad4bef2f7947c8993d44",
+   "path": "skills/frontend-design",
+   "license": "Apache-2.0",
+   "url": "https://skills.sh/anthropics/skills/frontend-design"
+  },
+  {
+   "id": "skills.sh/anthropics/skills/webapp-testing",
+   "source": "skills.sh",
+   "repo": "anthropics/skills",
+   "commit": "dbd4588f9e1033efb41dad4bef2f7947c8993d44",
+   "path": "skills/webapp-testing",
+   "license": "Apache-2.0",
+   "url": "https://skills.sh/anthropics/skills/webapp-testing"
+  },
+  {
+   "id": "skills.sh/anthropics/skills/mcp-builder",
+   "source": "skills.sh",
+   "repo": "anthropics/skills",
+   "commit": "dbd4588f9e1033efb41dad4bef2f7947c8993d44",
+   "path": "skills/mcp-builder",
+   "license": "Apache-2.0",
+   "url": "https://skills.sh/anthropics/skills/mcp-builder"
+  },
+  {
+   "id": "skills.sh/anthropics/skills/skill-creator",
+   "source": "skills.sh",
+   "repo": "anthropics/skills",
+   "commit": "dbd4588f9e1033efb41dad4bef2f7947c8993d44",
+   "path": "skills/skill-creator",
+   "license": "Apache-2.0",
+   "url": "https://skills.sh/anthropics/skills/skill-creator"
+  },
+  {
+   "id": "skills.sh/anthropics/skills/pdf",
+   "source": "skills.sh",
+   "repo": "anthropics/skills",
+   "commit": "dbd4588f9e1033efb41dad4bef2f7947c8993d44",
+   "path": "skills/pdf",
+   "license": "proprietary",
+   "url": "https://skills.sh/anthropics/skills/pdf"
+  },
+  {
+   "id": "skills.sh/anthropics/skills/docx",
+   "source": "skills.sh",
+   "repo": "anthropics/skills",
+   "commit": "dbd4588f9e1033efb41dad4bef2f7947c8993d44",
+   "path": "skills/docx",
+   "license": "proprietary",
+   "url": "https://skills.sh/anthropics/skills/docx"
+  },
+  {
+   "id": "skills.sh/anthropics/skills/claude-api",
+   "source": "skills.sh",
+   "repo": "anthropics/skills",
+   "commit": "dbd4588f9e1033efb41dad4bef2f7947c8993d44",
+   "path": "skills/claude-api",
+   "license": "Apache-2.0",
+   "url": "https://skills.sh/anthropics/skills/claude-api"
+  },
+  {
+   "id": "skills.sh/anthropics/skills/slack-gif-creator",
+   "source": "skills.sh",
+   "repo": "anthropics/skills",
+   "commit": "dbd4588f9e1033efb41dad4bef2f7947c8993d44",
+   "path": "skills/slack-gif-creator",
+   "license": "Apache-2.0",
+   "url": "https://skills.sh/anthropics/skills/slack-gif-creator"
+  },
+  {
+   "id": "skills.sh/flowkit-labs/skills/reddit-automation",
+   "source": "skills.sh",
+   "repo": "flowkit-labs/skills",
+   "commit": "0c9e2b63f504a296a86e45ed3a60a426dd979ca6",
+   "path": "reddit-automation",
+   "license": "MIT",
+   "url": "https://skills.sh/flowkit-labs/skills/reddit-automation"
+  },
+  {
+   "id": "skills.sh/designed-by-ai/skills/design-mobile-apps",
+   "source": "skills.sh",
+   "repo": "designed-by-ai/skills",
+   "commit": "03c20aec6dcedb5fabfb03dc37982eb52ef19ed6",
+   "path": "skills/design-mobile-apps",
+   "license": "MIT",
+   "url": "https://skills.sh/designed-by-ai/skills/design-mobile-apps"
+  },
+  {
+   "id": "skills.sh/vercel-labs/agent-skills/react-best-practices",
+   "source": "skills.sh",
+   "repo": "vercel-labs/agent-skills",
+   "commit": "063bee94c3f4df8453406c830b0a7df0f2860278",
+   "path": "skills/react-best-practices",
+   "license": "NOASSERTION",
+   "url": "https://skills.sh/vercel-labs/agent-skills/react-best-practices"
+  },
+  {
+   "id": "skills.sh/vercel-labs/agent-skills/web-design-guidelines",
+   "source": "skills.sh",
+   "repo": "vercel-labs/agent-skills",
+   "commit": "063bee94c3f4df8453406c830b0a7df0f2860278",
+   "path": "skills/web-design-guidelines",
+   "license": "NOASSERTION",
+   "url": "https://skills.sh/vercel-labs/agent-skills/web-design-guidelines"
+  },
+  {
+   "id": "skills.sh/vercel-labs/agent-skills/deploy-to-vercel",
+   "source": "skills.sh",
+   "repo": "vercel-labs/agent-skills",
+   "commit": "063bee94c3f4df8453406c830b0a7df0f2860278",
+   "path": "skills/deploy-to-vercel",
+   "license": "NOASSERTION",
+   "url": "https://skills.sh/vercel-labs/agent-skills/deploy-to-vercel"
+  },
+  {
+   "id": "skills.sh/vercel-labs/agent-skills/vercel-cli-with-tokens",
+   "source": "skills.sh",
+   "repo": "vercel-labs/agent-skills",
+   "commit": "063bee94c3f4df8453406c830b0a7df0f2860278",
+   "path": "skills/vercel-cli-with-tokens",
+   "license": "NOASSERTION",
+   "url": "https://skills.sh/vercel-labs/agent-skills/vercel-cli-with-tokens"
+  },
+  {
+   "id": "skills.sh/101-skills/superpowers/ai-video-generation",
+   "source": "skills.sh",
+   "repo": "101-skills/superpowers",
+   "commit": "becc25649700d5457772a00e5143e28ccf9e5afa",
+   "path": "tools/video/ai-video-generation",
+   "license": "NOASSERTION",
+   "url": "https://skills.sh/101-skills/superpowers/ai-video-generation"
+  },
+  {
+   "id": "skills.sh/101-skills/superpowers/web-search",
+   "source": "skills.sh",
+   "repo": "101-skills/superpowers",
+   "commit": "becc25649700d5457772a00e5143e28ccf9e5afa",
+   "path": "tools/llm/web-search",
+   "license": "NOASSERTION",
+   "url": "https://skills.sh/101-skills/superpowers/web-search"
+  },
+  {
+   "id": "skills.sh/101-skills/superpowers/python-executor",
+   "source": "skills.sh",
+   "repo": "101-skills/superpowers",
+   "commit": "becc25649700d5457772a00e5143e28ccf9e5afa",
+   "path": "tools/utilities/python-executor",
+   "license": "NOASSERTION",
+   "url": "https://skills.sh/101-skills/superpowers/python-executor"
+  },
+  {
+   "id": "skills.sh/101-skills/superpowers/agent-browser",
+   "source": "skills.sh",
+   "repo": "101-skills/superpowers",
+   "commit": "becc25649700d5457772a00e5143e28ccf9e5afa",
+   "path": "tools/utilities/agent-browser",
+   "license": "NOASSERTION",
+   "url": "https://skills.sh/101-skills/superpowers/agent-browser"
+  },
+  {
+   "id": "skills.sh/101-skills/superpowers/twitter-automation",
+   "source": "skills.sh",
+   "repo": "101-skills/superpowers",
+   "commit": "becc25649700d5457772a00e5143e28ccf9e5afa",
+   "path": "tools/social/twitter-automation",
+   "license": "NOASSERTION",
+   "url": "https://skills.sh/101-skills/superpowers/twitter-automation"
+  },
+  {
+   "id": "skills.sh/101-skills/superpowers/infsh-cli",
+   "source": "skills.sh",
+   "repo": "101-skills/superpowers",
+   "commit": "becc25649700d5457772a00e5143e28ccf9e5afa",
+   "path": "tools/infsh-cli",
+   "license": "NOASSERTION",
+   "url": "https://skills.sh/101-skills/superpowers/infsh-cli"
+  },
+  {
+   "id": "skills.sh/101-skills/superpowers/elevenlabs-tts",
+   "source": "skills.sh",
+   "repo": "101-skills/superpowers",
+   "commit": "becc25649700d5457772a00e5143e28ccf9e5afa",
+   "path": "tools/audio/elevenlabs-tts",
+   "license": "NOASSERTION",
+   "url": "https://skills.sh/101-skills/superpowers/elevenlabs-tts"
+  },
+  {
+   "id": "clawhub/pskoett/self-improving-agent",
+   "source": "clawhub",
+   "owner": "pskoett",
+   "slug": "self-improving-agent",
+   "version": "4.0.3",
+   "sha256": "8a4b53ff494d1ef5618ba47d3a282f2be2edff9d430d46df636c6c5c2badc5dc",
+   "license": "MIT-0",
+   "url": "https://clawhub.ai/pskoett/skills/self-improving-agent"
+  },
+  {
+   "id": "clawhub/spclaudehome/skill-vetter",
+   "source": "clawhub",
+   "owner": "spclaudehome",
+   "slug": "skill-vetter",
+   "version": "1.0.0",
+   "sha256": "325917e083610606416e736d78dea9b84b52b264722f3507f737e9e48480752e",
+   "license": "NOASSERTION",
+   "url": "https://clawhub.ai/spclaudehome/skills/skill-vetter"
+  },
+  {
+   "id": "clawhub/ivangdavila/self-improving",
+   "source": "clawhub",
+   "owner": "ivangdavila",
+   "slug": "self-improving",
+   "version": "1.2.16",
+   "sha256": "4c98045b922eeedf418d854dab3e14e60c2d8cf2f0e59e29637988cff842e113",
+   "license": "MIT-0",
+   "url": "https://clawhub.ai/ivangdavila/skills/self-improving"
+  },
+  {
+   "id": "clawhub/steipete/github",
+   "source": "clawhub",
+   "owner": "steipete",
+   "slug": "github",
+   "version": "1.0.0",
+   "sha256": "1ada11eb1ea1617a837d4fe6409ddfc36efd833d5795c7b19f321627bad5f469",
+   "license": "NOASSERTION",
+   "url": "https://clawhub.ai/steipete/skills/github"
+  },
+  {
+   "id": "clawhub/oswalpalash/ontology",
+   "source": "clawhub",
+   "owner": "oswalpalash",
+   "slug": "ontology",
+   "version": "1.0.4",
+   "sha256": "d499dcc0db1e38f23f5ef51c95fd6ba2f0ad8ec10d91f0bf6d5ed5f631608e4b",
+   "license": "MIT-0",
+   "url": "https://clawhub.ai/oswalpalash/skills/ontology"
+  },
+  {
+   "id": "clawhub/steipete/gog",
+   "source": "clawhub",
+   "owner": "steipete",
+   "slug": "gog",
+   "version": "1.0.0",
+   "sha256": "f3d7459428f9204a5437fd62340b3da36534bcf975f2f08f8083bcae287fe63a",
+   "license": "NOASSERTION",
+   "url": "https://clawhub.ai/steipete/skills/gog"
+  },
+  {
+   "id": "clawhub/tokauthai/skillscan",
+   "source": "clawhub",
+   "owner": "tokauthai",
+   "slug": "skillscan",
+   "version": "1.1.6",
+   "sha256": "5b506e5b5992850ff5090980fb133c3434bb8dea015ddbe8c820f6188cb2de8a",
+   "license": "MIT-0",
+   "url": "https://clawhub.ai/tokauthai/skills/skillscan"
+  },
+  {
+   "id": "clawhub/halthelobster/proactive-agent",
+   "source": "clawhub",
+   "owner": "halthelobster",
+   "slug": "proactive-agent",
+   "version": "3.1.0",
+   "sha256": "a8bc3c8122c0e28bf2f8ae8749738061aa84ea71816b0bb4e73a602b4cba1a7d",
+   "license": "NOASSERTION",
+   "url": "https://clawhub.ai/halthelobster/skills/proactive-agent"
+  },
+  {
+   "id": "clawhub/steipete/weather",
+   "source": "clawhub",
+   "owner": "steipete",
+   "slug": "weather",
+   "version": "1.0.0",
+   "sha256": "b0154d7467bbb145c6b5f145aed9b108ae99a89c160ca686dd5c2010c5a81daf",
+   "license": "NOASSERTION",
+   "url": "https://clawhub.ai/steipete/skills/weather"
+  },
+  {
+   "id": "clawhub/gpyangyoujun/multi-search-engine",
+   "source": "clawhub",
+   "owner": "gpyangyoujun",
+   "slug": "multi-search-engine",
+   "version": "2.1.3",
+   "sha256": "c2dc9053c07bb6bbc569727b8fee823119b664026b58587d15e1858d190df8f0",
+   "license": "MIT-0",
+   "url": "https://clawhub.ai/gpyangyoujun/skills/multi-search-engine"
+  },
+  {
+   "id": "clawhub/matrixy/agent-browser-clawdbot",
+   "source": "clawhub",
+   "owner": "matrixy",
+   "slug": "agent-browser-clawdbot",
+   "version": "0.1.0",
+   "sha256": "668062b7101213f057363c1cd7aa840ac924ace6755f6efd5f31ce5129b7d9b1",
+   "license": "NOASSERTION",
+   "url": "https://clawhub.ai/matrixy/skills/agent-browser-clawdbot"
+  },
+  {
+   "id": "clawhub/fly0pants/admapix",
+   "source": "clawhub",
+   "owner": "fly0pants",
+   "slug": "admapix",
+   "version": "1.0.30",
+   "sha256": "e7fe218372de9135ac8690a4cd79a712359e0642d51881018fc2918748c4a2ff",
+   "license": "MIT-0",
+   "url": "https://clawhub.ai/fly0pants/skills/admapix"
+  },
+  {
+   "id": "clawhub/biostartechnology/humanizer",
+   "source": "clawhub",
+   "owner": "biostartechnology",
+   "slug": "humanizer",
+   "version": "1.0.0",
+   "sha256": "c0e138de99bd99cb7591f22ed93c10c4cb2711335c0245f146e95932dd485a6a",
+   "license": "NOASSERTION",
+   "url": "https://clawhub.ai/biostartechnology/skills/humanizer"
+  },
+  {
+   "id": "clawhub/steipete/nano-pdf",
+   "source": "clawhub",
+   "owner": "steipete",
+   "slug": "nano-pdf",
+   "version": "1.0.0",
+   "sha256": "0a558e99aaaf08d3112c2084a509da941e49ba4625879b604a6010b474922933",
+   "license": "NOASSERTION",
+   "url": "https://clawhub.ai/steipete/skills/nano-pdf"
+  },
+  {
+   "id": "clawhub/steipete/obsidian",
+   "source": "clawhub",
+   "owner": "steipete",
+   "slug": "obsidian",
+   "version": "1.0.0",
+   "sha256": "ff964e127170088a5e5e280f9f437afcba3a6e3d579c05b947a37b7f4253bf1b",
+   "license": "NOASSERTION",
+   "url": "https://clawhub.ai/steipete/skills/obsidian"
+  },
+  {
+   "id": "clawhub/jacky1n7/openclaw-tavily-search",
+   "source": "clawhub",
+   "owner": "jacky1n7",
+   "slug": "openclaw-tavily-search",
+   "version": "0.2.1",
+   "sha256": "d5364337dde362433d2d0d984810ec06fa304eac18658482d1095086289d427e",
+   "license": "MIT-0",
+   "url": "https://clawhub.ai/jacky1n7/skills/openclaw-tavily-search"
+  },
+  {
+   "id": "clawhub/steipete/nano-banana-pro",
+   "source": "clawhub",
+   "owner": "steipete",
+   "slug": "nano-banana-pro",
+   "version": "1.0.1",
+   "sha256": "74ef0ce8249a132aea286e8110ad0e89503ddd49eeb12ad7c13b0ff50e2ea7e0",
+   "license": "NOASSERTION",
+   "url": "https://clawhub.ai/steipete/skills/nano-banana-pro"
+  },
+  {
+   "id": "clawhub/steipete/notion",
+   "source": "clawhub",
+   "owner": "steipete",
+   "slug": "notion",
+   "version": "1.0.0",
+   "sha256": "1361b2c85d0faf62abc7669a39eba777a7b1c71c5a94af9f42d90f8724c09413",
+   "license": "NOASSERTION",
+   "url": "https://clawhub.ai/steipete/skills/notion"
+  },
+  {
+   "id": "clawhub/chindden/skill-creator",
+   "source": "clawhub",
+   "owner": "chindden",
+   "slug": "skill-creator",
+   "version": "0.1.0",
+   "sha256": "8fd72618591ce5a6364523c23b1c42988385bdb089237302684b494a81d22e6e",
+   "license": "NOASSERTION",
+   "url": "https://clawhub.ai/chindden/skills/skill-creator"
+  },
+  {
+   "id": "clawhub/pollyreach/pollyreach",
+   "source": "clawhub",
+   "owner": "pollyreach",
+   "slug": "pollyreach",
+   "version": "1.0.3",
+   "sha256": "56f2173d93a4db31adc03b80d4d136833b443b56988cfadc968ea941ccecfd11",
+   "license": "MIT-0",
+   "url": "https://clawhub.ai/pollyreach/skills/pollyreach"
+  },
+  {
+   "id": "clawhub/maximeprades/auto-updater",
+   "source": "clawhub",
+   "owner": "maximeprades",
+   "slug": "auto-updater",
+   "version": "1.0.0",
+   "sha256": "bb4b614c353761065ca0187e01e41c6f01c00ff402528a40c185dbfa728ef626",
+   "license": "NOASSERTION",
+   "url": "https://clawhub.ai/maximeprades/skills/auto-updater"
+  },
+  {
+   "id": "clawhub/ivangdavila/word-docx",
+   "source": "clawhub",
+   "owner": "ivangdavila",
+   "slug": "word-docx",
+   "version": "1.0.2",
+   "sha256": "433c586060f4e30d7c16e3a81b51eea994dfc12a0c131c05723d2414327499c7",
+   "license": "MIT-0",
+   "url": "https://clawhub.ai/ivangdavila/skills/word-docx"
+  },
+  {
+   "id": "clawhub/ide-rea/baidu-search",
+   "source": "clawhub",
+   "owner": "ide-rea",
+   "slug": "baidu-search",
+   "version": "1.1.4",
+   "sha256": "41502b3e851b22134ec21dc197b1b710a01d51736153009eaed15030598460d5",
+   "license": "MIT-0",
+   "url": "https://clawhub.ai/ide-rea/skills/baidu-search"
+  },
+  {
+   "id": "clawhub/steipete/sonoscli",
+   "source": "clawhub",
+   "owner": "steipete",
+   "slug": "sonoscli",
+   "version": "1.0.0",
+   "sha256": "4f06ebf403f0c7861c6fe131ad6b3b2b5b09fbf543af2105b3eadc402521209a",
+   "license": "NOASSERTION",
+   "url": "https://clawhub.ai/steipete/skills/sonoscli"
+  },
+  {
+   "id": "clawhub/steipete/openai-whisper",
+   "source": "clawhub",
+   "owner": "steipete",
+   "slug": "openai-whisper",
+   "version": "1.0.0",
+   "sha256": "46c80d6b49590194bf357c948f322cc7943bfd26d9e7cb9f814dd36981b91c46",
+   "license": "NOASSERTION",
+   "url": "https://clawhub.ai/steipete/skills/openai-whisper"
+  },
+  {
+   "id": "clawhub/byungkyu/api-gateway",
+   "source": "clawhub",
+   "owner": "byungkyu",
+   "slug": "api-gateway",
+   "version": "1.2.29",
+   "sha256": "9254a1fab04d4b6aa601b851d49b67364d43fd08b938cd5cda83417562c3775d",
+   "license": "MIT-0",
+   "url": "https://clawhub.ai/byungkyu/skills/api-gateway"
+  },
+  {
+   "id": "clawhub/jk-0001/automation-workflows",
+   "source": "clawhub",
+   "owner": "jk-0001",
+   "slug": "automation-workflows",
+   "version": "0.1.0",
+   "sha256": "b54376c13734d711dcf7a017471b1f3acff96ddb2ae5cd5987c3704201b83a53",
+   "license": "NOASSERTION",
+   "url": "https://clawhub.ai/jk-0001/skills/automation-workflows"
+  },
+  {
+   "id": "clawhub/uroboros1205/prismfy-search",
+   "source": "clawhub",
+   "owner": "uroboros1205",
+   "slug": "prismfy-search",
+   "version": "1.3.8",
+   "sha256": "8466645f73081d41f63101ebe62acd90467e5b3ef4f07a4a566be66deff5d5e7",
+   "license": "MIT-0",
+   "url": "https://clawhub.ai/uroboros1205/skills/prismfy-search"
+  },
+  {
+   "id": "clawhub/ivangdavila/excel-xlsx",
+   "source": "clawhub",
+   "owner": "ivangdavila",
+   "slug": "excel-xlsx",
+   "version": "1.0.2",
+   "sha256": "c3f33f6559f899573ae8a12c206ce5f3c4647a6c1fefd5ce569292fe5f4344ec",
+   "license": "MIT-0",
+   "url": "https://clawhub.ai/ivangdavila/skills/excel-xlsx"
+  },
+  {
+   "id": "clawhub/autogame-17/feishu-evolver-wrapper",
+   "source": "clawhub",
+   "owner": "autogame-17",
+   "slug": "feishu-evolver-wrapper",
+   "version": "1.8.0",
+   "sha256": "263b67d12a3d317684d292679311a68161f99c8bd6b498b70fdb9561d83c3f99",
+   "license": "MIT-0",
+   "url": "https://clawhub.ai/autogame-17/skills/feishu-evolver-wrapper"
+  },
+  {
+   "id": "clawhub/shawnpana/browser-use",
+   "source": "clawhub",
+   "owner": "shawnpana",
+   "slug": "browser-use",
+   "version": "2.0.1",
+   "sha256": "8c63ccf1e1bcd7008eaa1e534e5d739be43757f6b3c2c9861b116ef680548abb",
+   "license": "MIT-0",
+   "url": "https://clawhub.ai/shawnpana/skills/browser-use"
+  },
+  {
+   "id": "clawhub/mrsz/agent-phone-call",
+   "source": "clawhub",
+   "owner": "mrsz",
+   "slug": "agent-phone-call",
+   "version": "1.0.5",
+   "sha256": "44a98bd94353e4d7e04f2c1b9dfe76043f0a00d0cf5a8d820a144ea9609172eb",
+   "license": "MIT-0",
+   "url": "https://clawhub.ai/mrsz/skills/agent-phone-call"
+  },
+  {
+   "id": "clawhub/shaivpidadi/free-ride",
+   "source": "clawhub",
+   "owner": "shaivpidadi",
+   "slug": "free-ride",
+   "version": "1.0.11",
+   "sha256": "28286eacf57559b977eb7012d0546246052b02ffbe392ee7df891464db23ce5f",
+   "license": "MIT-0",
+   "url": "https://clawhub.ai/shaivpidadi/skills/free-ride"
+  },
+  {
+   "id": "clawhub/steipete/mcporter",
+   "source": "clawhub",
+   "owner": "steipete",
+   "slug": "mcporter",
+   "version": "1.0.0",
+   "sha256": "0f905c0b73db288548b490f39ea8ea37876a04b601a2abc61b4928e7cac6092d",
+   "license": "NOASSERTION",
+   "url": "https://clawhub.ai/steipete/skills/mcporter"
+  },
+  {
+   "id": "clawhub/nextfrontierbuilds/elite-longterm-memory",
+   "source": "clawhub",
+   "owner": "nextfrontierbuilds",
+   "slug": "elite-longterm-memory",
+   "version": "1.2.3",
+   "sha256": "d8c099e9147ffeb50e4ae9c519b873aea7482d95a0102d2527bc6724c8a377f3",
+   "license": "NOASSERTION",
+   "url": "https://clawhub.ai/nextfrontierbuilds/skills/elite-longterm-memory"
+  },
+  {
+   "id": "clawhub/matagul/desktop-control",
+   "source": "clawhub",
+   "owner": "matagul",
+   "slug": "desktop-control",
+   "version": "1.0.0",
+   "sha256": "4c3a60d6a34f3e041455dc193e96734b31d7f96e4c3406e50f7699e0945e4523",
+   "license": "NOASSERTION",
+   "url": "https://clawhub.ai/matagul/skills/desktop-control"
+  },
+  {
+   "id": "clawhub/fangkelvin/find-skills-skill",
+   "source": "clawhub",
+   "owner": "fangkelvin",
+   "slug": "find-skills-skill",
+   "version": "1.0.0",
+   "sha256": "a7cd17a68156581095e29fca26aff0603c61672248914ed179e89d6bb5b4ae0d",
+   "license": "NOASSERTION",
+   "url": "https://clawhub.ai/fangkelvin/skills/find-skills-skill"
+  },
+  {
+   "id": "clawhub/steipete/brave-search",
+   "source": "clawhub",
+   "owner": "steipete",
+   "slug": "brave-search",
+   "version": "1.0.1",
+   "sha256": "8a4983459a15cc95e1da25f825d37523768a9a9319da842fc13259703603155c",
+   "license": "NOASSERTION",
+   "url": "https://clawhub.ai/steipete/skills/brave-search"
+  },
+  {
+   "id": "clawhub/clawcall-dev/clawcall-dev",
+   "source": "clawhub",
+   "owner": "clawcall-dev",
+   "slug": "clawcall-dev",
+   "version": "2.0.1",
+   "sha256": "8b39298287608dc9362f80829e36b606bab84ee3ab961183b80acdb82490f407",
+   "license": "MIT-0",
+   "url": "https://clawhub.ai/clawcall-dev/skills/clawcall-dev"
+  },
+  {
+   "id": "clawhub/udiedrichsen/stock-analysis",
+   "source": "clawhub",
+   "owner": "udiedrichsen",
+   "slug": "stock-analysis",
+   "version": "6.2.0",
+   "sha256": "e47c67ff51fcc15c263de5684db189b2f56c6ca924f9c78cda1fdba69c6a3d25",
+   "license": "NOASSERTION",
+   "url": "https://clawhub.ai/udiedrichsen/skills/stock-analysis"
+  },
+  {
+   "id": "clawhub/steipete/video-frames",
+   "source": "clawhub",
+   "owner": "steipete",
+   "slug": "video-frames",
+   "version": "1.0.0",
+   "sha256": "417bef4071dbb83a3bb4086a8d61cac815242cee75c2e935f5afd4aea80c60d2",
+   "license": "NOASSERTION",
+   "url": "https://clawhub.ai/steipete/skills/video-frames"
+  },
+  {
+   "id": "clawhub/ivangdavila/powerpoint-pptx",
+   "source": "clawhub",
+   "owner": "ivangdavila",
+   "slug": "powerpoint-pptx",
+   "version": "1.0.1",
+   "sha256": "f487c4962fb1e9d3b9553a9ad7b9ab2f8dead97afb7ec569c7253fe9dc477d1c",
+   "license": "MIT-0",
+   "url": "https://clawhub.ai/ivangdavila/skills/powerpoint-pptx"
+  },
+  {
+   "id": "clawhub/michaelgathara/youtube-watcher",
+   "source": "clawhub",
+   "owner": "michaelgathara",
+   "slug": "youtube-watcher",
+   "version": "1.0.0",
+   "sha256": "1a6597d48555e5c327fb7ee6927f0d29713718b9fbbb1c4c93eb4b4b8a3eacc6",
+   "license": "NOASSERTION",
+   "url": "https://clawhub.ai/michaelgathara/skills/youtube-watcher"
+  },
+  {
+   "id": "clawhub/steipete/slack",
+   "source": "clawhub",
+   "owner": "steipete",
+   "slug": "slack",
+   "version": "1.0.0",
+   "sha256": "91922e1616970ef2f10a1b0f7cab64fd8fa98ead9903b8f5e715b97bf873e502",
+   "license": "NOASSERTION",
+   "url": "https://clawhub.ai/steipete/skills/slack"
+  },
+  {
+   "id": "clawhub/lamelas/himalaya",
+   "source": "clawhub",
+   "owner": "lamelas",
+   "slug": "himalaya",
+   "version": "1.0.0",
+   "sha256": "d9515000bb336be683be51a832e68b5d374344593e95ff97ead759eee00a7cab",
+   "license": "NOASSERTION",
+   "url": "https://clawhub.ai/lamelas/skills/himalaya"
+  },
+  {
+   "id": "clawhub/joargp/news-summary",
+   "source": "clawhub",
+   "owner": "joargp",
+   "slug": "news-summary",
+   "version": "1.0.1",
+   "sha256": "13fc40a990edfa17f77f9b7d3899b4b175ac4b089d3fccede1231a7fefa98f21",
+   "license": "NOASSERTION",
+   "url": "https://clawhub.ai/joargp/skills/news-summary"
+  },
+  {
+   "id": "clawhub/gzlicanyi/imap-smtp-email",
+   "source": "clawhub",
+   "owner": "gzlicanyi",
+   "slug": "imap-smtp-email",
+   "version": "0.0.19",
+   "sha256": "9f3cd65df82cf467f27b84ab2210a3066637deeb7bcb13b316f2c4c549682682",
+   "license": "MIT-0",
+   "url": "https://clawhub.ai/gzlicanyi/skills/imap-smtp-email"
+  },
+  {
+   "id": "clawhub/awspace/pdf",
+   "source": "clawhub",
+   "owner": "awspace",
+   "slug": "pdf",
+   "version": "0.1.0",
+   "sha256": "a3985e384064ffb116a778b9a10e50f450a4b322bda48c579a0c2054aa790262",
+   "license": "NOASSERTION",
+   "url": "https://clawhub.ai/awspace/skills/pdf"
+  },
+  {
+   "id": "clawhub/xiucheng/xiucheng-self-improving-agent",
+   "source": "clawhub",
+   "owner": "xiucheng",
+   "slug": "xiucheng-self-improving-agent",
+   "version": "1.0.0",
+   "sha256": "6f193aa9a68bd809bb172b03036e9c92a8fcd99ade56993c1e5a37b32f5b88ea",
+   "license": "NOASSERTION",
+   "url": "https://clawhub.ai/xiucheng/skills/xiucheng-self-improving-agent"
+  },
+  {
+   "id": "clawhub/steipete/markdown-converter",
+   "source": "clawhub",
+   "owner": "steipete",
+   "slug": "markdown-converter",
+   "version": "1.0.0",
+   "sha256": "07c57afd04e4fa1ee050a9e69d974470f8f7068cfd29280ca93e7e36c1529c87",
+   "license": "NOASSERTION",
+   "url": "https://clawhub.ai/steipete/skills/markdown-converter"
+  }
+ ]
+}

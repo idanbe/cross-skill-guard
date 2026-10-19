@@ -1,0 +1,1 @@
+{"findings": [{"rule": "lethal_trifecta", "path": ["playwright", "doc-writer", "playwright"], "private_data": "~/clients/**", "untrusted_input": "web", "egress": "*"}]}

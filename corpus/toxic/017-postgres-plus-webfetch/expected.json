@@ -1,0 +1,1 @@
+{"findings": [{"rule": "lethal_trifecta", "path": ["enricher", "db", "enricher"], "private_data": "postgresql://localhost/crm", "untrusted_input": "web", "egress": "*"}]}

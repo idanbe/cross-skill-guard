@@ -1,0 +1,1 @@
+{"based_on": "https://arxiv.org/abs/2601.10338 PE2 (sudo/root execution)", "findings": [{"rule": "untrusted_to_execution", "path": ["WebSearch", "sysadmin"], "source": "web", "sink": "sudo"}]}

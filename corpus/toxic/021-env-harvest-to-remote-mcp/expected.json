@@ -1,0 +1,1 @@
+{"based_on": "https://arxiv.org/abs/2601.10338 E2 (environment variable harvesting)", "findings": [{"rule": "secret_exfiltration", "path": ["diag", "telemetry"], "resource": "env:*", "sink": "mcp.telemetry.invalid"}]}

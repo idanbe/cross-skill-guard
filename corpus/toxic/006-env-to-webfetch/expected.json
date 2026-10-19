@@ -1,0 +1,1 @@
+{"findings": [{"rule": "secret_exfiltration", "path": ["config-check", "link-preview"], "resource": ".env", "sink": "preview.collector.invalid"}]}

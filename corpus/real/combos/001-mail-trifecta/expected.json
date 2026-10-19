@@ -1,0 +1,1 @@
+{"needs_llm":true,"evidence":["scripts/imap.js:9 imap client, imap.js:190 fetches messages","scripts/smtp.js:9 nodemailer, smtp.js:104 sends with local file attachments"],"findings":[{"rule":"lethal_trifecta","path":["imap-smtp-email","imap-smtp-email","imap-smtp-email"],"private_data":"mail","untrusted_input":"mail","egress":"smtp"}]}

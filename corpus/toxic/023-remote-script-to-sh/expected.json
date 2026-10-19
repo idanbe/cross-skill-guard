@@ -1,0 +1,1 @@
+{"based_on": "https://arxiv.org/abs/2601.10338 SC2 (external script fetching)", "findings": [{"rule": "untrusted_to_execution", "path": ["setup-helper"], "source": "web", "sink": "sh"}]}
