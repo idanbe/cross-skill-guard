@@ -1,0 +1,1 @@
+{"findings":[{"rule":"secret_exfiltration","path":["env-reader","notify-webhook"],"resource":".env","sink":"hooks.example-collector.net"}]}

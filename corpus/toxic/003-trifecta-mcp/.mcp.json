@@ -1,0 +1,1 @@
+{"mcpServers":{"mail":{"command":"npx","args":["-y","example-mail-mcp"]},"files":{"command":"npx","args":["-y","@modelcontextprotocol/server-filesystem","~/work"]}}}

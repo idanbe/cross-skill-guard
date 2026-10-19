@@ -1,0 +1,1 @@
+{"findings":[{"rule":"lethal_trifecta","path":["mail-triage","mail","files"],"private_data":"~/work","untrusted_input":"mail","egress":"mail"}]}
