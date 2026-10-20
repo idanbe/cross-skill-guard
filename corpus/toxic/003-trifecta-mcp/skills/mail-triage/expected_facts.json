@@ -1,0 +1,1 @@
+{"facts": [{"kind": "untrusted", "arg": "mail", "rule": "mcp__mail"}, {"kind": "reads", "arg": "mail", "rule": "mcp__mail"}, {"kind": "reads", "arg": "~/work", "rule": "mcp__files"}, {"kind": "egress", "arg": "mail", "rule": "mcp__mail"}]}

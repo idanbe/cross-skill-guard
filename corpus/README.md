@@ -36,5 +36,11 @@ Toxic installs give their capabilities through config only (`allowed-tools`, `.m
 `expected.json` has the same format plus `evidence` (file:line in the fetched skill). Tests that
 scan them need `real/cache/`.
 
+## expected_facts.json
+
+Next to every SKILL.md: the facts the LLM extractor should find in its body, in the form
+described in `docs/facts.md` (LLM facts). `crosskill eval --push-only` uploads them to Langfuse
+as the `crosskill-facts` dataset.
+
 Now: 24 toxic (3 need the LLM, 4 modeled on published patterns), 53 clean, 100 real, 2 real
 combos.

@@ -1,1 +1,1 @@
-{"needs_llm":true,"findings":[{"rule":"lethal_trifecta","path":["mail","files","mail"],"private_data":"~/work","untrusted_input":"mail","egress":"mail"}]}
+{"needs_llm":true,"findings":[{"rule":"lethal_trifecta","path":["mail-triage","files","mail-triage"],"private_data":"~/work","untrusted_input":"mail","egress":"mail"}]}

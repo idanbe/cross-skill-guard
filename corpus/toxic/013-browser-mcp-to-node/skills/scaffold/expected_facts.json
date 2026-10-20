@@ -1,0 +1,1 @@
+{"facts": [{"kind": "executes", "arg": "node", "rule": "Bash(node:*)"}]}

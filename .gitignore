@@ -7,3 +7,4 @@ dist/
 build/
 /cross-skill-guard-plan.md
 corpus/real/cache/
+.env

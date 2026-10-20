@@ -12,8 +12,12 @@ The roadmap, with done criteria and targets for each stage, is in `cross-skill-g
 which stage is current before starting work. Rule from the plan: finish a stage against its done
 criteria before opening the next one.
 
-Status: stage 1 done. `crosskill scan` meets its targets: 22/22 static toxic findings, 0 false
-findings on clean, a few ms per install. Next is stage 2: Langfuse and the LLM extractor.
+Status: stage 1 done (22/22 static toxic findings, 0 false findings on clean, a few ms per
+install). Stage 2 in progress: LLM extractor, cache, `--no-llm`, labels and the Langfuse dataset
+and prompt are in place; evals have not run yet (need a valid `OPENROUTER_API_KEY` in `.env`).
+
+Langfuse is the local Docker stack from the triage-guard project (http://localhost:3000, project
+`cross-skill-guard`); `.env` holds its keys and is gitignored.
 
 Naming: the plan spells the command `crossskill`, but the package, entry point and imports are all
 `crosskill` (one s). Use `crosskill` in code.
@@ -27,7 +31,9 @@ pytest -q -k secret       # single corpus case (ids look like toxic/001-secret-t
 ruff check .              # CI (.github/workflows/ci.yml) runs ruff + pytest on Python 3.12
 crosskill version
 crosskill scan corpus/toxic/020-two-findings          # text; exit 1 when flows are found
-crosskill scan --sarif corpus/toxic/020-two-findings  # SARIF 2.1.0
+crosskill scan --no-llm --sarif corpus/toxic/020-two-findings  # static only, SARIF 2.1.0
+crosskill eval --push-only   # upload labels (dataset) and prompt.md to Langfuse
+crosskill eval --model M     # run the extractor on the dataset, scores per prompt version
 ```
 
 ## Architecture
@@ -45,6 +51,12 @@ LTL runtime hooks and a LangGraph daily feed on top of these findings.
   and the secret/private classification. Reads the corpus layout and `.claude/`.
 - `src/crosskill/rules.lp`: clingo rules. `flow/6` is the recursive, path-carrying reachability;
   all components share the agent context (one hop per path). `not denied(G)` applies deny rules.
+- `src/crosskill/llm.py`: LLM extractor through OpenRouter (`langfuse.openai` wrapper traces each
+  call), Pydantic output schema, disk cache keyed by model + prompt + text
+  (`~/.cache/crosskill/llm`). `prompt.md` is the prompt. `extract.llm_grants` turns its facts
+  into `Grant`s (quote must be in the file; `rule` lets `deny` apply).
+- `src/crosskill/evals.py`: fact-level precision/recall against `expected_facts.json`, run as a
+  Langfuse experiment (`crosskill eval`).
 - `src/crosskill/scan.py`: grounds and solves, keeps the shortest path per finding, renders the
   file:line chain as text or SARIF. `src/crosskill/cli.py`: typer app.
 - `corpus/`: what every stage is measured against.
@@ -58,14 +70,17 @@ LTL runtime hooks and a LangGraph daily feed on top of these findings.
     The content is untrusted: never execute it. `real/combos/` builds labeled installs from
     those skills (`install.json` lists manifest ids).
   - `needs_llm: true` in `expected.json` marks flows the static extractors can't see (SKILL.md
-    prose, JS/TS scripts). Tests skip them until stage 2.
+    prose, JS/TS scripts). The static test skips them.
+  - `skills/<name>/expected_facts.json`: labeled LLM facts for every corpus skill.
   - Classification conventions (what counts as secret, private, untrusted, egress, arbitrary
     execution, deny precedence) are in `docs/facts.md`. `corpus/README.md` has the format.
   - Toxic installs use config only, never working scripts, and `.invalid` domains.
   - Stage 0 targets: 20 toxic, 50 clean, 100 real.
 - `tests/test_corpus.py` checks that the corpus is well formed. `tests/test_scan_corpus.py`
   scans every install (and `real/combos/` when the cache exists) and requires every expected
-  finding, no finding on clean installs, and under 1 s each.
+  finding, no finding on clean installs, and under 1 s each. `test_perfect_llm_extractor` feeds
+  the labels in as LLM output: it checks that labels and rules agree (no network).
+  `tests/test_llm.py`: cache, scoring, quote lines, deny prefixes.
 
 Stage 1 targets: at least 90% recall on toxic installs without `needs_llm`, at most 1 false finding across clean
 installs, under 1 s per typical install.

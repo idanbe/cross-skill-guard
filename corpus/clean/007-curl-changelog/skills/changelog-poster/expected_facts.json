@@ -1,0 +1,1 @@
+{"facts": [{"kind": "egress", "arg": "*", "rule": "Bash(curl:*)"}]}

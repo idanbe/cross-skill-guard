@@ -14,6 +14,8 @@ from urllib.parse import urlparse
 import bashlex
 import yaml
 
+from crosskill.llm import facts_for
+
 ARBITRARY = {"bash", "sh", "zsh", "python", "python3", "node", "sudo", "pip install"}
 NETWORK = {"curl", "wget"}
 # A resource is secret when it covers one of these concrete credential files.
@@ -25,6 +27,8 @@ SECRET_FILES = [
 ]
 WEB = [("untrusted", "web"), ("egress", "*")]
 RULE = re.compile(r"^([\w-]+)(?:\((.*)\))?$")
+LLM_SUFFIXES = {".js", ".mjs", ".cjs", ".ts"}
+LLM_MAX_CHARS = 60_000
 
 
 @dataclass
@@ -84,7 +88,11 @@ def covers(deny: str, rule: str) -> bool:
     d, g = RULE.match(deny.strip()), RULE.match(rule.strip())
     if not (d and g) or d[1] != g[1]:
         return False
-    return d[2] is None or d[2] == g[2] or (g[2] is not None and fnmatch(g[2], d[2]))
+    if d[2] is None or d[2] == g[2]:
+        return True
+    # `curl:*` is a prefix; `~/.ssh/**` also covers `~/.ssh` itself.
+    pat = d[2].replace(":*", "*")
+    return g[2] is not None and (fnmatch(g[2], pat) or fnmatch(g[2] + "/", pat))
 
 
 def line_of(lines: list[str], needle: str) -> int:
@@ -161,6 +169,30 @@ def script_grants(comp: str, skill_dir: Path, root: Path) -> list[Grant]:
     return grants
 
 
+def quote_line(lines: list[str], quote: str) -> int | None:
+    """Line of the file that holds the quote, ignoring case and punctuation."""
+    q = re.sub(r"\W+", "", (quote.strip().splitlines() or [""])[0].lower())[:60]
+    return next((i for i, s in enumerate(lines, 1) if q and q in re.sub(r"\W+", "", s.lower())), None)
+
+
+def llm_grants(comp: str, skill_dir: Path, root: Path, model: str) -> list[Grant]:
+    files = [skill_dir / "SKILL.md", *sorted(f for f in skill_dir.rglob("*") if f.suffix in LLM_SUFFIXES)]
+    grants = []
+    for f in files:
+        text = f.read_text(errors="replace")
+        if len(text) > LLM_MAX_CHARS:
+            continue  # ponytail: big bundles are skipped; split into chunks if real skills need it
+        lines, rel = text.splitlines(), str(f.relative_to(root))
+        for fact in facts_for(str(f.relative_to(skill_dir)), text, model)["facts"]:
+            line = quote_line(lines, fact["quote"])
+            if line is None:
+                continue  # a quote that is not in the file is not evidence
+            arbitrary = fact["kind"] == "executes" and fact["arg"] in ARBITRARY
+            grants.append(Grant(comp, fact["kind"], fact["arg"], rel, line, lines[line - 1].strip()[:120],
+                                fact["rule"], arbitrary, extractor="llm"))
+    return grants
+
+
 def frontmatter(text: str) -> dict:
     if not text.startswith("---"):
         return {}
@@ -171,7 +203,7 @@ def frontmatter(text: str) -> dict:
     return fm if isinstance(fm, dict) else {}
 
 
-def skill_grants(skill_md: Path, root: Path) -> list[Grant]:
+def skill_grants(skill_md: Path, root: Path, model: str | None = None) -> list[Grant]:
     text = skill_md.read_text(errors="replace")
     fm, lines = frontmatter(text), text.splitlines()
     comp = str(fm.get("name") or skill_md.parent.name)
@@ -181,7 +213,8 @@ def skill_grants(skill_md: Path, root: Path) -> list[Grant]:
     grants = []
     for e in map(str.strip, map(str, entries)):
         grants += grants_from(comp, rule_caps(e), rel, lines, line, rule=e)
-    return grants + script_grants(comp, skill_md.parent, root)
+    grants += script_grants(comp, skill_md.parent, root)
+    return grants + (llm_grants(comp, skill_md.parent, root, model) if model else [])
 
 
 def mcp_caps(server: dict) -> list[tuple]:
@@ -230,12 +263,15 @@ def settings_grants(path: Path, root: Path) -> tuple[list[Grant], list[str]]:
     return grants, perms.get("deny", [])
 
 
-def extract(root: Path) -> list[Grant]:
-    """All grants in an install. Reads the corpus layout and the `.claude/` layout."""
+def extract(root: Path, model: str | None = None) -> list[Grant]:
+    """All grants in an install. Reads the corpus layout and the `.claude/` layout.
+
+    With a model, the LLM extractor adds facts from SKILL.md prose and JS/TS scripts.
+    """
     grants, denies = [], []
     for base in (root, root / ".claude"):
         for skill_md in sorted(base.glob("skills/*/SKILL.md")):
-            grants += skill_grants(skill_md, root)
+            grants += skill_grants(skill_md, root, model)
         for name in ("settings.json", "settings.local.json"):
             if (base / name).exists():
                 g, d = settings_grants(base / name, root)

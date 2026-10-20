@@ -57,12 +57,13 @@ def finding(atom: clingo.Symbol, grants: list[Grant]) -> tuple[list[int], dict]:
     fields = dict(zip(FIELDS[atom.name], (a.string for a in args), strict=False))
     chain = [{"file": grants[i].file, "line": grants[i].line, "component": grants[i].comp,
               "fact": f"{grants[i].kind}({grants[i].comp}, {grants[i].arg})",
-              "quote": grants[i].quote} for i in ids]
+              "quote": grants[i].quote, "extractor": grants[i].extractor} for i in ids]
     return ids, {"rule": atom.name, "path": path, **fields, "chain": chain}
 
 
-def scan(root: Path) -> list[dict]:
-    grants = extract(Path(root))
+def scan(root: Path, model: str | None = None) -> list[dict]:
+    """Findings for an install. `model` turns on the LLM extractor; None is static only."""
+    grants = extract(Path(root), model)
     ctl = clingo.Control(["--warn=none"])
     ctl.add("base", [], RULES + facts(grants))
     ctl.ground([("base", [])])
@@ -95,7 +96,8 @@ def to_text(findings: list[dict]) -> str:
     out = [f"{len(findings)} toxic flow(s)"]
     for f in findings:
         out += ["", f"{f['rule']}: {summary(f)}"]
-        out += [f"  {c['file']}:{c['line']}  {c['fact']}\n      {c['quote']}" for c in f["chain"]]
+        out += [f"  {c['file']}:{c['line']}  {c['fact']}{' [llm]' * (c['extractor'] == 'llm')}"
+                f"\n      {c['quote']}" for c in f["chain"]]
     return "\n".join(out)
 
 

@@ -69,6 +69,28 @@ The corpus `expected.json` files assume these rules. Change them here first, the
   `secret_exfiltration`, even when untrusted input is also present. `lethal_trifecta` is for
   private data that is not a secret.
 
+## LLM facts (stage 2)
+
+`src/crosskill/llm.py` asks a model (through OpenRouter) for facts in one file: SKILL.md or a
+JS/TS script. `src/crosskill/prompt.md` is the prompt, pushed to Langfuse as `crosskill-extract`.
+
+- The `arg` forms are the ones above, plus `mail` for a mailbox and `*` for an unnamed
+  destination. Egress means data is sent, posted, uploaded or replied; fetching or searching is
+  untrusted input only.
+- Only what the text names. A resource the text does not name is not guessed.
+- Each fact carries the permission `rule` the agent needs (`Read(.env)`, `Bash(curl:*)`,
+  `mcp__mail`), so `deny` applies to LLM facts too. In a deny, `prefix:*` matches any command
+  that starts with the prefix, and `dir/**` also covers `dir`.
+- A fact whose `quote` is not in the file is dropped. Its line is where the quote is found.
+- An LLM fact is a grant even with no `allow` rule: the skill tells the agent to do it, and the
+  user is one approval away. The component is the skill, even when the text describes an MCP
+  server's tools.
+
+Labels are `skills/<name>/expected_facts.json` (`{"facts": [{kind, arg, rule}]}`) for every
+corpus skill, written from the body text only (frontmatter is static). They list only facts that
+can change a finding: secret or private reads and writes, egress, untrusted input, arbitrary
+execution. Evals score the same subset (`src/crosskill/evals.py`).
+
 ## Open questions
 
 - Granularity of file resources (path vs. glob vs. class).
