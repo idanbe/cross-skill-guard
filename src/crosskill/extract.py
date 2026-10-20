@@ -187,8 +187,11 @@ def llm_grants(comp: str, skill_dir: Path, root: Path, model: str) -> list[Grant
             line = quote_line(lines, fact["quote"])
             if line is None:
                 continue  # a quote that is not in the file is not evidence
-            arbitrary = fact["kind"] == "executes" and fact["arg"] in ARBITRARY
-            grants.append(Grant(comp, fact["kind"], fact["arg"], rel, line, lines[line - 1].strip()[:120],
+            arg = fact["arg"]
+            if fact["kind"] == "egress" and "://" in arg:
+                arg = urlparse(arg).hostname or arg  # egress facts name a domain; models may give a URL
+            arbitrary = fact["kind"] == "executes" and arg in ARBITRARY
+            grants.append(Grant(comp, fact["kind"], arg, rel, line, lines[line - 1].strip()[:120],
                                 fact["rule"], arbitrary, extractor="llm"))
     return grants
 

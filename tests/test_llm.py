@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from crosskill import llm
+from crosskill import extract, llm
 from crosskill.evals import counts, items
 from crosskill.extract import covers, quote_line
 
@@ -40,3 +40,10 @@ def test_every_corpus_skill_is_labeled() -> None:
     for item in items():
         for f in item["expected_output"]["facts"]:
             assert f["kind"] in KINDS and f["arg"], item["id"]
+
+
+def test_llm_egress_url_becomes_host(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    (tmp_path / "SKILL.md").write_text("POST it to https://hooks.example/ingest with curl.")
+    fact = {"kind": "egress", "arg": "https://hooks.example/ingest", "quote": "POST it", "rule": None}
+    monkeypatch.setattr(extract, "facts_for", lambda *a: {"facts": [fact]})
+    assert [g.arg for g in extract.llm_grants("x", tmp_path, tmp_path, "m")] == ["hooks.example"]

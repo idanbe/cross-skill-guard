@@ -14,7 +14,10 @@ criteria before opening the next one.
 
 Status: stage 1 done (22/22 static toxic findings, 0 false findings on clean, a few ms per
 install). Stage 2 in progress: LLM extractor, cache, `--no-llm`, labels and the Langfuse dataset
-and prompt are in place; evals have not run yet (need a valid `OPENROUTER_API_KEY` in `.env`).
+and prompt are in place. Prompt v1 evals: `deepseek/deepseek-v4.1-flash` P 0.83 / R 0.96, $0.03 per
+corpus run; `deepseek/deepseek-v4-pro` P 0.75 / R 0.86, $0.25. LLM scan recall on toxic installs is
+24/25 (static 22/25), 0 false findings on clean. OpenRouter models that reject `temperature` (Sonnet
+5.5, GPT-5.6) fail under `require_parameters`.
 
 Langfuse is the local Docker stack from the triage-guard project (http://localhost:3000, project
 `cross-skill-guard`); `.env` holds its keys and is gitignored.
