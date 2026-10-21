@@ -9,6 +9,7 @@ import json
 import os
 import tempfile
 import time
+import urllib.error
 from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor
 from concurrent.futures import wait as wait_any
 from dataclasses import asdict
@@ -30,6 +31,7 @@ LABELS = ["approve", "reject", "crosskill-candidate"]
 MAX_PER_SKILL = 3
 WORKERS = 8
 CALL_RESERVE_USD = llm.CALL_RESERVE_USD
+MAX_ATTEMPTS = 3  # runs a skill may stop discovery with transient errors before it is skipped
 POPULAR_MAX_AGE = timedelta(days=7)
 DAY_MS = 86_400_000
 
@@ -156,6 +158,16 @@ def resume_waiting(state_dir: Path, gh, feed_dir: Path, errors: list[str] | None
             resumed += 1
             _save(ledger_path, ledger)
     return resumed
+
+
+def transient(e: BaseException) -> bool:
+    """A network failure worth retrying on a later run: timeouts, connection errors, HTTP 429 or
+    5xx from OpenRouter (LLM or Jev), ClawHub or GitHub. Anything else is deterministic."""
+    if isinstance(e, urllib.error.HTTPError):
+        return e.code == 429 or e.code >= 500
+    if isinstance(e, (urllib.error.URLError, TimeoutError, ConnectionError)):
+        return True
+    return llm.transient(e)
 
 
 def _spent() -> float:
@@ -324,20 +336,40 @@ def discover(state_dir: Path, gh, feed_dir: Path, max_usd: float, max_skills: in
             return keys
         g = graph(cp)
         for i, sk in enumerate(new):
-            if i >= max_skills or not budget.left():
+            if i >= max_skills:
+                notes.append(f"skill cap reached: {max_skills} checked")
                 break
+            if not budget.left():
+                notes.append(f"budget reached before {sk.id}")
+                break
+            stop = False
             try:
                 keys += _check(sk, state_dir, pop, model, gh, feed_dir, g, ledger, fetch, Path(tmp))
             except llm.OverBudget:
-                break  # not processed: the next run checks this skill again
-            except Exception as e:  # noqa: BLE001 - the skill counts as processed
-                if llm.transient(e):  # retries exhausted: stop, the next run checks it again
-                    errors.append(f"discovery stopped at {sk.id}: {e!r}")
-                    break
-                errors.append(f"{sk.id}: {e!r}")
+                notes.append(f"budget reached at {sk.id}; it is checked next run")
+                _save(ledger_path, ledger)
+                break
+            except Exception as e:  # noqa: BLE001 - deterministic: the skill counts as processed
+                _save(ledger_path, ledger)  # issues opened before the failure stay recorded
+                if transient(e):
+                    n = cursor.get("attempts", {}).get(sk.id, 0) + 1
+                    if n < MAX_ATTEMPTS:  # the cursor stays: the next run checks it again
+                        cursor["attempts"] = {sk.id: n}
+                        _save(cursor_path, cursor)
+                        errors.append(f"discovery stopped at {sk.id} "
+                                      f"(transient, run {n} of {MAX_ATTEMPTS}): {e!r}")
+                        break
+                    errors.append(f"{sk.id}: skipped after {n} runs with transient errors: {e!r}")
+                    stop = True
+                else:
+                    errors.append(f"{sk.id}: {e!r}")
             _save(ledger_path, ledger)
             cursor["clawhub"] = sk.updated_at
+            cursor.pop("attempts", None)
             _save(cursor_path, cursor)
+            if stop:  # the network is likely still failing: the next skill waits for the next run
+                errors.append(f"discovery stopped after skipping {sk.id}")
+                break
     return keys
 
 

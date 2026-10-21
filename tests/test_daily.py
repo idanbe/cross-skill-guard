@@ -308,10 +308,70 @@ def test_transient_llm_error_retries_the_skill_next_run(tmp_path, offline, monke
 
     monkeypatch.setattr(llm, "complete", timeout)
     summary = go(tmp_path, gh, src)
-    assert "discovery stopped at clawhub/acme/cost-report" in summary
-    assert not cursor.exists() and src.downloads == ["cost-report"]  # uploader not reached
+    assert "discovery stopped at clawhub/acme/cost-report (transient, run 1 of 3)" in summary
+    assert json.loads(cursor.read_text())["clawhub"] < T0  # not moved
+    assert src.downloads == ["cost-report"]  # uploader not reached
     monkeypatch.setattr(llm, "complete", _complete)
     go(tmp_path, gh, src)
     assert offline["llm"] > 0  # cost-report is read this time: the timeout was not cached
     assert json.loads(cursor.read_text()) == {"clawhub": T0 + 2}
     assert src.downloads == ["cost-report", "uploader"]
+
+
+def test_poison_skill_is_skipped_after_three_runs(tmp_path, offline, monkeypatch):
+    """R18: a skill that times out on every run stops discovery for 3 runs, then is marked
+    processed with an error; the next skill runs on run 4."""
+    import httpx
+    from openai import APITimeoutError
+
+    src = Source([skill("cost-report", T0 + 1), skill("uploader", T0 + 2)], [],
+                 {"uploader": T4 / "uploader", "cost-report": T4 / "cost-report"})
+    gh, cursor = MemoryGitHub(), tmp_path / "state" / "cursor.json"
+    _complete = llm.complete
+
+    def timeout(*a, **kw):
+        raise APITimeoutError(request=httpx.Request("POST", "https://openrouter.ai"))
+
+    monkeypatch.setattr(llm, "complete", timeout)
+    for n in (1, 2):
+        summary = go(tmp_path, gh, src)
+        assert f"(transient, run {n} of 3)" in summary
+        assert json.loads(cursor.read_text())["attempts"] == {"clawhub/acme/cost-report": n}
+        assert "uploader" not in src.downloads
+    summary = go(tmp_path, gh, src)
+    assert "clawhub/acme/cost-report: skipped after 3 runs with transient errors" in summary
+    assert "discovery stopped after skipping clawhub/acme/cost-report" in summary
+    assert json.loads(cursor.read_text()) == {"clawhub": T0 + 1}
+    assert "uploader" not in src.downloads
+    monkeypatch.setattr(llm, "complete", _complete)
+    go(tmp_path, gh, src)  # run 4
+    assert json.loads(cursor.read_text()) == {"clawhub": T0 + 2}
+    assert src.downloads[-1] == "uploader"
+
+
+@pytest.mark.parametrize("code, moves", [(503, False), (429, False), (404, True)])
+def test_jev_http_error_on_new_skill(tmp_path, offline, monkeypatch, code, moves):
+    """R18: a Jev 503/429 stops discovery without moving the cursor; a 404 is deterministic."""
+    import urllib.error
+
+    def post(body):
+        raise urllib.error.HTTPError("https://openrouter.ai", code, "err", {}, None)
+
+    monkeypatch.setattr(triage, "_post", post)
+    src = Source([skill("fmt", T0 + 1)], [], {"fmt": next(CLEAN.iterdir())})
+    summary = go(tmp_path, MemoryGitHub(), src)
+    cur = json.loads((tmp_path / "state" / "cursor.json").read_text())
+    assert (cur == {"clawhub": T0 + 1}) is moves
+    assert ("discovery stopped at clawhub/acme/fmt" in summary) is not moves
+    assert f"HTTPError {code}" in summary
+
+
+def test_transient_classification():
+    import socket
+    import urllib.error
+
+    assert daily.transient(urllib.error.URLError("down"))
+    assert daily.transient(socket.timeout()) and daily.transient(ConnectionResetError())
+    assert daily.transient(urllib.error.HTTPError("u", 502, "bad", {}, None))
+    assert not daily.transient(urllib.error.HTTPError("u", 403, "no", {}, None))
+    assert not daily.transient(ValueError("bad zip"))

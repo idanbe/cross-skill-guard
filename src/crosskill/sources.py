@@ -34,15 +34,16 @@ class Skill:
 
 def http_bytes(url: str) -> bytes:
     req = urllib.request.Request(url, headers={"User-Agent": "crosskill-feed"})
-    for _ in range(5):
+    for attempt in range(5):
         try:
             with urllib.request.urlopen(req, timeout=60) as r:
                 return r.read()
         except urllib.error.HTTPError as e:
-            if e.code != 429:
-                raise
-            time.sleep(int(e.headers.get("Retry-After", "5")))
-    raise RuntimeError(f"rate limited: {url}")
+            if e.code != 429 or attempt == 4:
+                raise  # a 429 left over is transient: the daily run stops and retries next run
+            wait = e.headers.get("Retry-After", "5")
+            time.sleep(min(int(wait), 60) if wait.isdigit() else 5)
+    raise AssertionError("unreachable")
 
 
 def http_json(url: str) -> dict:
