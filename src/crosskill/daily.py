@@ -9,7 +9,8 @@ import json
 import os
 import tempfile
 import time
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor
+from concurrent.futures import wait as wait_any
 from dataclasses import asdict
 from datetime import date, timedelta
 from pathlib import Path
@@ -28,6 +29,7 @@ from crosskill.sources import Skill
 LABELS = ["approve", "reject", "crosskill-candidate"]
 MAX_PER_SKILL = 3
 WORKERS = 8
+CALL_RESERVE_USD = 0.008  # one bounded flash call: 8k completion tokens plus the prompt
 POPULAR_MAX_AGE = timedelta(days=7)
 DAY_MS = 86_400_000
 
@@ -161,16 +163,17 @@ def _spent() -> float:
 
 
 class Budget:
-    """Per-run cap. Keeps room for one more skill as costly as the costliest so far."""
+    """Per-run cap. Keeps room for each running task plus one more, each as costly as the
+    costliest step seen so far."""
 
     def __init__(self, max_usd: float):
         self.mark = _spent()
         self.limit, self.step = self.mark + max_usd, 0.0
 
-    def left(self) -> bool:
+    def left(self, running: int = 0) -> bool:
         now = _spent()
         self.step, self.mark = max(self.step, now - self.mark), now
-        return now + self.step < self.limit
+        return now + self.step * (running + 1) < self.limit
 
 
 def _solo(tmp: Path, dirname: str, d: Path) -> Path:
@@ -186,22 +189,31 @@ def _get(sk: Skill, state_dir: Path, fetch) -> Path:
     return dest / sk.dirname if (dest / sk.dirname).exists() else fetch(sk, dest)
 
 
-def _parallel(items: list, fn, budget: Budget, errors: list[str], what: str) -> dict | None:
-    """fn on each item, WORKERS at a time, checking the budget before each batch.
+def _parallel(items: list, fn, budget: Budget, errors: list[str], what: str) -> tuple[dict, bool]:
+    """fn on each (Skill, ...) item in a rolling pool of WORKERS, checking the budget per submit.
 
-    Returns {index: result} for the items that did not raise, or None when the budget ran out."""
-    out = {}
+    Returns {index: result} for the items that did not raise, and False when the budget ran out."""
+    out, todo, running, ok = {}, list(enumerate(items)), {}, True
     with ThreadPoolExecutor(WORKERS) as ex:
-        for i in range(0, len(items), WORKERS):
-            if not budget.left():
-                return None
-            batch = {ex.submit(fn, it): i + j for j, it in enumerate(items[i:i + WORKERS])}
-            for fut, idx in batch.items():
+        while todo or running:
+            while ok and todo and len(running) < WORKERS:
+                if not budget.left(len(running)):
+                    ok = False
+                    break
+                i, it = todo.pop(0)
+                running[ex.submit(fn, it)] = i
+            if not running:
+                break
+            done, _ = wait_any(running, return_when=FIRST_COMPLETED)
+            for fut in done:
+                i = running.pop(fut)
                 try:
-                    out[idx] = fut.result()
+                    out[i] = fut.result()
+                except llm.OverBudget:
+                    ok = False
                 except Exception as e:  # noqa: BLE001 - that skill is left out, the rest go on
-                    errors.append(f"{what} {items[idx][0].id}: {e!r}")
-    return out
+                    errors.append(f"{what} {items[i][0].id}: {e!r}")
+    return out, ok
 
 
 def _gate(d: Path, dirname: str, tmp: Path) -> bool:
@@ -212,7 +224,7 @@ def _gate(d: Path, dirname: str, tmp: Path) -> bool:
     return skill_md.exists() and triage.passes(triage.roles(skill_md.read_text(errors="replace")))
 
 
-def _popular_set(state_dir, model, budget, list_popular, fetch, errors, tmp):
+def _popular_set(state_dir, model, budget, list_popular, fetch, errors, tmp, notes):
     """Popular skills, their dirs and the dirnames the LLM reads, refreshed weekly.
 
     Jev gates each skill; the gated ones are extracted in parallel within the budget (cached
@@ -229,21 +241,26 @@ def _popular_set(state_dir, model, budget, list_popular, fetch, errors, tmp):
             if pop is None:
                 return None
     entries = []
-    for d in pop["skills"]:
-        sk = Skill(**d)
+    with ThreadPoolExecutor(WORKERS) as ex:  # downloads are free; _get skips skill@version on disk
+        futs = [(sk, ex.submit(_get, sk, state_dir, fetch))
+                for sk in (Skill(**d) for d in pop["skills"])]
+    for sk, fut in futs:
         try:
-            entries.append((sk, _get(sk, state_dir, fetch)))
+            entries.append((sk, fut.result()))
         except Exception as e:  # noqa: BLE001 - left out, so it cannot break every check
             errors.append(f"popular {sk.id}: {e!r}")
     if not model:
         return {sk.dirname: sk for sk, _ in entries}, {sk.dirname: d for sk, d in entries}, set()
-    gate = _parallel(entries, lambda e: _gate(e[1], e[0].dirname, tmp), budget, errors, "triage")
-    if gate is None:
+    gate, ok = _parallel(entries, lambda e: _gate(e[1], e[0].dirname, tmp), budget, errors, "triage")
+    if not ok:
+        notes.append(f"popular set: {len(entries)} downloaded, budget ran out in triage")
         return None
     read = [entries[i] for i, ok in sorted(gate.items()) if ok]
-    warm = _parallel(read, lambda e: extract(_solo(tmp, e[0].dirname, e[1]), model), budget,
+    warm, ok = _parallel(read, lambda e: extract(_solo(tmp, e[0].dirname, e[1]), model), budget,
                      errors, "extract")
-    if warm is None:
+    notes.append(f"popular set: {len(entries)} downloaded, {len(read)} passed the gate, "
+                 f"{len(warm)} extracted by the LLM" + ("" if ok else " before the budget ran out"))
+    if not ok:
         return None
     failed = {read[i][0].dirname for i in range(len(read)) if i not in warm}
     kept = [(sk, d) for i, (sk, d) in enumerate(entries) if i in gate and sk.dirname not in failed]
@@ -283,17 +300,20 @@ def _check(sk, state_dir, pop, model, gh, feed_dir, g, ledger, fetch, tmp) -> li
 
 
 def discover(state_dir: Path, gh, feed_dir: Path, max_usd: float, max_skills: int, model: str | None,
-             errors: list[str] | None = None, list_new=sources.updated_since,
+             errors: list[str] | None = None, notes: list[str] | None = None,
+             list_new=sources.updated_since,
              list_popular=sources.popular, fetch=sources.download) -> list[str]:
     """Check skills updated since the cursor, oldest first, within the budget and skill cap."""
     errors = [] if errors is None else errors
+    notes = [] if notes is None else notes
     budget = Budget(max_usd)  # per run, whatever this process spent before
     cursor_path, ledger_path = state_dir / "cursor.json", state_dir / "ledger.json"
     cursor = _load(cursor_path, {"clawhub": int(time.time() * 1000) - DAY_MS})
     ledger, keys = _load(ledger_path, {}), []
     with tempfile.TemporaryDirectory() as tmp, \
             SqliteSaver.from_conn_string(str(state_dir / "checkpoints.sqlite")) as cp:
-        pop = _popular_set(state_dir, model, budget, list_popular, fetch, errors, Path(tmp))
+        pop = _popular_set(state_dir, model, budget, list_popular, fetch, errors, Path(tmp),
+                           notes)
         if pop is None:
             errors.append("discovery stopped: no popular set (budget or listing)")
             return keys
@@ -308,6 +328,8 @@ def discover(state_dir: Path, gh, feed_dir: Path, max_usd: float, max_skills: in
                 break
             try:
                 keys += _check(sk, state_dir, pop, model, gh, feed_dir, g, ledger, fetch, Path(tmp))
+            except llm.OverBudget:
+                break  # not processed: the next run checks this skill again
             except Exception as e:  # noqa: BLE001 - the skill counts as processed
                 errors.append(f"{sk.id}: {e!r}")
             _save(ledger_path, ledger)
@@ -321,18 +343,23 @@ def run(state_dir: Path, feed_dir: Path, gh, max_usd: float = 0.5, max_skills: i
     """One daily run: resume labelled candidates, then discover new ones. Returns a summary."""
     state_dir.mkdir(parents=True, exist_ok=True)
     os.environ["LANGFUSE_TRACING_ENABLED"] = "false"  # no traces from the daily run (langfuse 4.x)
-    saved_cache, start, errors = llm.CACHE, _spent(), []
+    saved_cache, start, errors, notes = llm.CACHE, _spent(), [], []
     llm.CACHE = state_dir / "cache" / "crosskill" / "llm"  # Jev answers go next to it
+    limit = start + max_usd
+    # Hard cap: a call starts only if it and every call in flight fit, each as costly as the
+    # costliest call so far (at least CALL_RESERVE_USD).
+    llm.allow = lambda n: _spent() + (n + 1) * max(llm.max_call_usd, CALL_RESERVE_USD) < limit
     try:
         gh.ensure_labels(LABELS)
         before = len(_load(feed_dir / "advisories.json", []))
         resumed = resume_waiting(state_dir, gh, feed_dir, errors)
         published = len(_load(feed_dir / "advisories.json", [])) - before
-        keys = discover(state_dir, gh, feed_dir, max_usd, max_skills, model, errors, **sources_)
+        keys = discover(state_dir, gh, feed_dir, max_usd, max_skills, model, errors, notes,
+                        **sources_)
     finally:
-        llm.CACHE = saved_cache
+        llm.CACHE, llm.allow = saved_cache, None
     head = (f"resumed {resumed}, published {published}, new candidates {len(keys)}, "
             f"spend ${_spent() - start:.4f}")
     lines = [head]
-    lines += [f"  candidate {k}" for k in keys] + [f"  error {e}" for e in errors]
+    lines += [f"  {n}" for n in notes] + [f"  candidate {k}" for k in keys] + [f"  error {e}" for e in errors]
     return "\n".join(lines)

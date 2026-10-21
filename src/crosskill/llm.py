@@ -19,6 +19,24 @@ DEFAULT_MODEL = "deepseek/deepseek-v4.1-flash"
 CACHE = Path(os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache") / "crosskill" / "llm"
 spent_usd = 0.0  # cost of uncached calls this process
 SPEND_LOCK = threading.Lock()  # the daily run extracts from worker threads
+# Bounds on one call: a fact list fits easily; a runaway reasoning loop (131k tokens seen) does not.
+MAX_TOKENS, REASONING_TOKENS, TIMEOUT_S = 8192, 4096, 120
+# Spend gate for runs with a cap (the daily run sets it): allow(calls_in_flight) -> bool, asked
+# under SPEND_LOCK before each uncached call. `max_call_usd` is the costliest call seen.
+allow = None
+in_flight = 0
+max_call_usd = 0.0
+
+
+class OverBudget(RuntimeError):
+    pass
+
+
+def charge(cost: float | None) -> None:
+    global spent_usd, max_call_usd
+    with SPEND_LOCK:
+        spent_usd += cost or 0
+        max_call_usd = max(max_call_usd, cost or 0)
 
 
 class Fact(BaseModel):
@@ -35,14 +53,22 @@ class Facts(BaseModel):
 def complete(system: str, user: str, model: str, prompt=None) -> dict:
     from langfuse.openai import OpenAI  # imported here so static scans stay fast
 
-    client = OpenAI(base_url="https://openrouter.ai/api/v1", api_key=os.environ["OPENROUTER_API_KEY"])
+    client = OpenAI(base_url="https://openrouter.ai/api/v1", api_key=os.environ["OPENROUTER_API_KEY"],
+                    timeout=TIMEOUT_S, max_retries=0)
     start = time.perf_counter()
-    r = client.chat.completions.parse(
-        model=model, temperature=0, response_format=Facts, langfuse_prompt=prompt,
-        messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
-        # Route only to providers that enforce the JSON schema; ask OpenRouter for the cost.
-        extra_body={"provider": {"require_parameters": True}, "usage": {"include": True}},
-    )
+    try:
+        r = client.chat.completions.parse(
+            model=model, temperature=0, response_format=Facts, langfuse_prompt=prompt,
+            max_tokens=MAX_TOKENS,
+            messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
+            # Route only to providers that enforce the JSON schema; ask OpenRouter for the cost.
+            extra_body={"provider": {"require_parameters": True}, "usage": {"include": True},
+                        "reasoning": {"max_tokens": REASONING_TOKENS}},
+        )
+    except Exception as e:
+        # A failed call can still be billed (e.g. LengthFinishReasonError carries the completion).
+        charge(getattr(getattr(getattr(e, "completion", None), "usage", None), "cost", None))
+        raise
     parsed = r.choices[0].message.parsed
     return {"facts": [f.model_dump() for f in parsed.facts] if parsed else [],
             "cost": getattr(r.usage, "cost", None), "latency": time.perf_counter() - start}
@@ -56,10 +82,17 @@ def facts_for(name: str, text: str, model: str, prompt=None) -> dict:
     path = CACHE / f"{key}.json"
     if path.exists():
         return {**json.loads(path.read_text()), "cached": True}
-    global spent_usd
-    out = complete(system, user, model, prompt)
+    global in_flight
     with SPEND_LOCK:
-        spent_usd += out.get("cost") or 0
+        if allow is not None and not allow(in_flight):
+            raise OverBudget("LLM budget reached")
+        in_flight += 1
+    try:
+        out = complete(system, user, model, prompt)
+    finally:
+        with SPEND_LOCK:
+            in_flight -= 1
+    charge(out.get("cost"))
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(out))
     return out

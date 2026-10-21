@@ -59,3 +59,48 @@ def test_triage_report_counts() -> None:
     for role, hit in labels.items():
         line = next(x for x in report.splitlines() if x.startswith(role))
         assert f"tp {int(hit)} fp {int(not hit)}" in line
+
+
+def test_calls_are_bounded_and_failed_calls_charged(monkeypatch: pytest.MonkeyPatch) -> None:
+    from types import SimpleNamespace
+
+    import langfuse.openai
+    from openai import LengthFinishReasonError
+
+    seen = {}
+
+    def parse(**kw):
+        seen["call"] = kw
+        usage = SimpleNamespace(cost=0.05, completion_tokens=8192, prompt_tokens=10, total_tokens=8202)
+        raise LengthFinishReasonError(completion=SimpleNamespace(usage=usage))
+
+    class Client:
+        def __init__(self, **kw):
+            seen["client"] = kw
+            self.chat = SimpleNamespace(completions=SimpleNamespace(parse=parse))
+
+    monkeypatch.setattr(langfuse.openai, "OpenAI", Client)
+    monkeypatch.setenv("OPENROUTER_API_KEY", "x")
+    monkeypatch.setattr(llm, "spent_usd", 0.0)
+    monkeypatch.setattr(llm, "max_call_usd", 0.0)
+    with pytest.raises(LengthFinishReasonError):
+        llm.complete("sys", "user", "m")
+    assert llm.spent_usd == 0.05
+    assert seen["client"]["timeout"] == llm.TIMEOUT_S == 120
+    assert seen["call"]["max_tokens"] == llm.MAX_TOKENS
+    assert seen["call"]["extra_body"]["reasoning"] == {"max_tokens": llm.REASONING_TOKENS}
+    assert llm.REASONING_TOKENS < llm.MAX_TOKENS
+
+
+def test_spend_gate_blocks_uncached_calls(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    calls, asked = [], []
+    monkeypatch.setattr(llm, "CACHE", tmp_path)
+    monkeypatch.setattr(llm, "complete", lambda *a: calls.append(a) or {"facts": [], "cost": 0.02})
+    monkeypatch.setattr(llm, "max_call_usd", 0.0)
+    monkeypatch.setattr(llm, "spent_usd", 0.0)
+    monkeypatch.setattr(llm, "allow", lambda n: asked.append(n) or len(asked) < 2)
+    llm.facts_for("SKILL.md", "one", "m")
+    with pytest.raises(llm.OverBudget):
+        llm.facts_for("SKILL.md", "two", "m")
+    llm.facts_for("SKILL.md", "one", "m")  # cached: no gate, no call
+    assert len(calls) == 1 and asked == [0, 0] and llm.in_flight == 0

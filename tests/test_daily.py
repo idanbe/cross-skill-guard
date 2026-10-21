@@ -52,6 +52,7 @@ def offline(monkeypatch, tmp_path):
     monkeypatch.setattr(llm, "CACHE", tmp_path / "unused-cache")
     monkeypatch.setattr(llm, "spent_usd", 0.0)
     monkeypatch.setattr(triage, "spent_usd", 0.0)
+    monkeypatch.setattr(llm, "max_call_usd", 0.0)
     calls = {"llm": 0, "jev": 0}
 
     def complete(system, user, model, prompt=None):
@@ -163,11 +164,11 @@ def test_budget_stops_and_cursor_resumes(tmp_path, offline):
     src = Source([skill("cost-report", T0 + 1), skill("uploader", T0 + 2)], [],
                  {"uploader": T4 / "uploader", "cost-report": T4 / "cost-report"})
     gh = MemoryGitHub()
-    go(tmp_path, gh, src, max_usd=0.01)  # one uncached LLM call costs 0.01
+    go(tmp_path, gh, src, max_usd=0.015)  # one uncached LLM call costs 0.01
     cursor = tmp_path / "state" / "cursor.json"
     assert json.loads(cursor.read_text()) == {"clawhub": T0 + 1}
     assert src.downloads == ["cost-report"]
-    go(tmp_path, gh, src, max_usd=0.01)
+    go(tmp_path, gh, src, max_usd=0.015)
     assert json.loads(cursor.read_text()) == {"clawhub": T0 + 2}
     assert src.downloads == ["cost-report", "uploader"]
 
@@ -217,9 +218,10 @@ def test_jev_gates_popular_skills(tmp_path, offline):
                  {"uploader": T4 / "uploader", "cost-report": T4 / "cost-report",
                   "fmt": next(CLEAN.iterdir())})
     gh = MemoryGitHub()
-    go(tmp_path, gh, src)
+    summary = go(tmp_path, gh, src)
     # the LLM reads cost-report (relevant static grant) and uploader, never the quiet fmt
     assert offline == {"llm": 2, "jev": 1} and len(gh.issues) == 1
+    assert "popular set: 2 downloaded, 1 passed the gate, 1 extracted by the LLM" in summary
 
 
 def test_dry_run_leaves_state_untouched(tmp_path, monkeypatch):
@@ -246,3 +248,47 @@ def test_dry_run_leaves_state_untouched(tmp_path, monkeypatch):
     assert r.exit_code == 0, r.output
     assert "summary" in r.output and "[candidate] t" in r.output
     assert seen[0] != state and (state / "ledger.json").read_text() == "{}" and not feed.exists()
+
+
+def test_pool_rolls_past_a_slow_item():
+    """A batch of 8 would wait for the slow item; a rolling pool finishes the other 9 meanwhile."""
+    import threading
+
+    fast_done, lock, count = threading.Event(), threading.Lock(), [0]
+
+    def fn(item):
+        if item[1] == "slow":
+            return fast_done.wait(5)
+        with lock:
+            count[0] += 1
+            if count[0] == 9:
+                fast_done.set()
+        return True
+
+    items = [(skill("slow", 0), "slow")] + [(skill(f"f{i}", 0), "fast") for i in range(9)]
+    errors = []
+    out, ok = daily._parallel(items, fn, daily.Budget(1.0), errors, "test")
+    assert ok and out[0] is True and len(out) == 10 and not errors
+
+
+def test_budget_reserves_room_for_running_tasks(monkeypatch):
+    b = daily.Budget(0.10)
+    assert b.left(7)
+    monkeypatch.setattr(llm, "spent_usd", llm.spent_usd + 0.03)
+    assert b.left(0) and not b.left(2)  # 0.03 now + 3 x 0.03 more would pass 0.10
+
+
+def test_popular_downloads_are_reused(tmp_path):
+    gh, src = MemoryGitHub(), t4_source()
+    go(tmp_path, gh, src)
+    (tmp_path / "state" / "popular.json").unlink()  # force a refresh: same version on disk
+    go(tmp_path, gh, src)
+    assert sorted(src.downloads) == ["cost-report", "uploader"]
+
+
+def test_llm_gate_stops_without_skipping_the_skill(tmp_path, offline):
+    src = Source([skill("cost-report", T0 + 1)], [], {"cost-report": T4 / "cost-report"})
+    summary = go(tmp_path, MemoryGitHub(), src, max_usd=0.005)  # under one call's reserve
+    assert offline["llm"] == 0 and "spend $0.0000" in summary
+    assert not (tmp_path / "state" / "cursor.json").exists()  # the skill is checked next run
+    assert llm.allow is None
