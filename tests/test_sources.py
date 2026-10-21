@@ -45,7 +45,15 @@ def test_updated_since_pages_and_stops():
 def test_updated_since_respects_limit():
     get = fake_get([{"items": [item("a", f"s{i}", 900 - i) for i in range(5)],
                      "nextCursor": "c"}])
-    assert len(sources.updated_since(0, 2, get=get)) == 2
+    out = sources.updated_since(0, 2, get=get)
+    assert [x.slug for x in out] == ["s4", "s3"]
+
+
+def test_updated_since_caps_pages():
+    page = {"items": [], "nextCursor": "same"}
+    get = fake_get([page] * 10)
+    assert sources.updated_since(0, 5, get=get, max_pages=3) == []
+    assert len(get.calls) == 3
 
 
 def test_popular_reads_installs():

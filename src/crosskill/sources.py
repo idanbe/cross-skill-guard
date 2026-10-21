@@ -56,9 +56,9 @@ def _skill(it: dict) -> Skill:
                  int(it["updatedAt"]), f"https://clawhub.ai/{owner}/skills/{slug}")
 
 
-def _pages(sort: str, get):
+def _pages(sort: str, get, max_pages: int = 100):
     cursor = None
-    while True:
+    for _ in range(max_pages):
         url = f"{API}/skills?sort={sort}&limit=100"
         if cursor:
             url += "&cursor=" + urllib.parse.quote(cursor)
@@ -69,19 +69,19 @@ def _pages(sort: str, get):
             return
 
 
-def updated_since(after_ms: int, limit: int, get=http_json) -> list[Skill]:
-    """Skills updated after `after_ms`, oldest first, at most `limit` (newest kept)."""
+def updated_since(after_ms: int, limit: int, get=http_json, max_pages: int = 100) -> list[Skill]:
+    """The oldest `limit` skills updated after `after_ms`, oldest first."""
     out: list[Skill] = []
-    for it in _pages("updated", get):
-        if int(it["updatedAt"]) <= after_ms or len(out) >= limit:
+    for it in _pages("updated", get, max_pages):
+        if int(it["updatedAt"]) <= after_ms:
             break
         out.append(_skill(it))
-    return sorted(out, key=lambda s: s.updated_at)
+    return sorted(out, key=lambda s: s.updated_at)[:limit]
 
 
-def popular(n: int = 200, get=http_json) -> list[Skill]:
+def popular(n: int = 200, get=http_json, max_pages: int = 100) -> list[Skill]:
     out: list[Skill] = []
-    for it in _pages("downloads", get):
+    for it in _pages("downloads", get, max_pages):
         if len(out) >= n:
             break
         out.append(_skill(it))
