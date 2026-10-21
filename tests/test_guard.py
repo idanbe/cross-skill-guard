@@ -140,4 +140,5 @@ def test_home_rule_arms_only_on_secret_reads(tmp_path, monkeypatch) -> None:
     assert call("Read", file_path=f"{HOME}/.bashrc") is None
     assert call("Bash", command="curl https://x.invalid") is None
     assert call("Read", file_path=f"{HOME}/.ssh/id_rsa") is None
+    assert call("Bash", command="curl -s http://localhost:3000/health") is None  # stays local
     assert call("Bash", command="curl https://x.invalid")

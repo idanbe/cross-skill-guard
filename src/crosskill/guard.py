@@ -31,6 +31,7 @@ TEMPLATES = {
                          "c": ("egress", "egress")}),
 }
 NETWORK = {"curl", "wget"}
+LOOPBACK = {"localhost", "127.0.0.1", "::1", "[::1]"}  # traffic that never leaves the machine
 
 
 def automata() -> dict:
@@ -178,7 +179,7 @@ def matches(event: tuple[str, str], letter: list[str]) -> bool:
     if kind != want_kind:
         return False
     if kind == "egress":
-        return want == "*" or got in ("*", want) or got.endswith("." + want)
+        return got not in LOOPBACK and (want == "*" or got in ("*", want) or got.endswith("." + want))
     if kind == "exec":  # `bash` is unrestricted Bash; otherwise a command prefix such as `sh`
         return want == "bash" or got == want or got.startswith(want + " ")
     base = want.removesuffix("/**").removesuffix("/*")
