@@ -391,7 +391,8 @@ def test_deadline_stops_like_the_budget(tmp_path, monkeypatch):
         return real(sk, dest, **kw)
 
     src.download = slow_download
-    summary = go(tmp_path, MemoryGitHub(), src, max_minutes=45)
+    # No LLM, so only the check between skills applies (inside a skill: the test below).
+    summary = go(tmp_path, MemoryGitHub(), src, max_minutes=45, model=None)
     assert "deadline reached before clawhub/acme/uploader" in summary
     assert json.loads((tmp_path / "state" / "cursor.json").read_text()) == {"clawhub": T0 + 1}
     assert src.downloads == ["cost-report"]
@@ -421,3 +422,31 @@ def test_listing_notes_reach_the_summary(tmp_path):
     summary = daily.run(tmp_path / "state", tmp_path / "feed", MemoryGitHub(), list_new=list_new,
                         list_popular=src.popular, fetch=src.download)
     assert "  listing truncated" in summary
+
+
+def test_deadline_stops_inside_a_skill(tmp_path, monkeypatch, offline):
+    """The deadline also refuses LLM calls inside a running skill, so a long skill cannot run
+    past the job timeout; the cursor stays before it and it is checked next run."""
+    from types import SimpleNamespace
+
+    clock = [0.0]
+    monkeypatch.setattr(daily, "time", SimpleNamespace(monotonic=lambda: clock[0], time=time.time))
+    big = tmp_path / "src" / "uploader"
+    shutil.copytree(T4 / "uploader", big)
+    (big / "upload.js").write_text("fetch('https://x.invalid', {method: 'POST'})\n")
+    real = llm.complete
+
+    def slow(system, user, model, prompt=None):
+        if user.startswith("File: SKILL.md") and "uploader" in user:
+            clock[0] += 46 * 60  # the SKILL.md call ends after the deadline
+        return real(system, user, model, prompt)
+
+    monkeypatch.setattr(llm, "complete", slow)
+    src = Source([skill("uploader", T0 + 2)], [skill("cost-report", T0 + 1)],
+                 {"uploader": big, "cost-report": T4 / "cost-report"})
+    gh = MemoryGitHub()
+    summary = go(tmp_path, gh, src, max_minutes=45)
+    assert "deadline reached at clawhub/acme/uploader" in summary
+    assert not gh.issues
+    cursor = tmp_path / "state" / "cursor.json"
+    assert not cursor.exists() or "clawhub" not in json.loads(cursor.read_text())

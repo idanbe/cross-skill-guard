@@ -353,7 +353,8 @@ def discover(state_dir: Path, gh, feed_dir: Path, max_usd: float, max_skills: in
             try:
                 keys += _check(sk, state_dir, pop, model, gh, feed_dir, g, ledger, fetch, Path(tmp))
             except llm.OverBudget:
-                notes.append(f"budget reached at {sk.id}; it is checked next run")
+                why = "deadline" if deadline is not None and time.monotonic() >= deadline else "budget"
+                notes.append(f"{why} reached at {sk.id}; it is checked next run")
                 _save(ledger_path, ledger)
                 break
             except Exception as e:  # noqa: BLE001 - deterministic: the skill counts as processed
@@ -391,8 +392,10 @@ def run(state_dir: Path, feed_dir: Path, gh, max_usd: float = 0.5, max_skills: i
     llm.CACHE = state_dir / "cache" / "crosskill" / "llm"  # Jev answers go next to it
     limit = start + max_usd
     # Hard cap: a call starts only if it and every call in flight fit, each as costly as the
-    # costliest call so far (at least CALL_RESERVE_USD).
-    llm.allow = lambda n: _spent() + (n + 1) * max(llm.max_call_usd, CALL_RESERVE_USD) < limit
+    # costliest call so far (at least CALL_RESERVE_USD), and only before the deadline, so a long
+    # skill cannot run past the job timeout.
+    llm.allow = lambda n: (time.monotonic() < deadline and
+                           _spent() + (n + 1) * max(llm.max_call_usd, CALL_RESERVE_USD) < limit)
     try:
         gh.ensure_labels(LABELS)
         before = len(_load(feed_dir / "advisories.json", []))
