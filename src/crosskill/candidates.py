@@ -128,7 +128,7 @@ def render(adv: dict) -> str:
         lines += ["Each of these components may be safe on its own. The risk is installing them "
                   + f"together: {flow}.", ""]
         lines.append("Nothing here says any component was written to cause harm. The combination "
-                     "gives an agent a path it would not have with either one alone.")
+                     "gives an agent a path it would not have with any one of them alone.")
     else:
         lines += [f"This skill can {EXPLAIN[adv['rule']]}: {flow}.", ""]
         lines.append("That set of capabilities is risky for an agent, because one session can use "

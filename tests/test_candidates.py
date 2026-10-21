@@ -121,6 +121,7 @@ def test_render_wording(tmp_path):
     assert adv["key"] == candidates.key(f, comps) and adv["id"] == "CK-draft" and adv["title"]
     page = candidates.render(adv)
     assert "may be safe on its own" in page and "client-notes" in page and "fetch" in page
+    assert "with any one of them alone" in page and "either one" not in page
     assert "https://clawhub.ai/acme/skills/client-notes SKILL.md:" in page
     assert "pipeline/popular-mcp.json:" in page
     assert json.loads(json.dumps(adv)) == adv
