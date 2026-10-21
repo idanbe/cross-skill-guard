@@ -100,3 +100,26 @@ def guard_init(
     typer.echo(f"{len(guard['properties'])} properties written to {path / GUARD}")
     for p in guard["properties"]:
         typer.echo(f"  {p['ltl']}  ({p['rule']} via {' → '.join(p['path'])})")
+
+
+@app.command("daily")
+def daily_(
+    state: Annotated[Path, typer.Option(help="State directory: checkpoints, ledger, cursor, caches")],
+    feed: Annotated[Path, typer.Option(help="Feed directory the advisories are written to")] = Path("feed"),
+    max_usd: Annotated[float, typer.Option(help="LLM and Jev spend cap for this run")] = 0.5,
+    max_skills: Annotated[int, typer.Option(help="Most new skills checked this run")] = 50,
+    dry_run: Annotated[bool, typer.Option(
+        "--dry-run", help="In-memory GitHub: print candidates instead of opening issues. "
+        "The ledger still records them, so use a scratch --state")] = False,
+    model: Model = DEFAULT_MODEL,
+) -> None:
+    """Check new ClawHub skills and hold each candidate for an approve/reject label."""
+    from crosskill.daily import run
+    from crosskill.github import GitHub, MemoryGitHub
+
+    need_key(False)
+    gh = MemoryGitHub() if dry_run else GitHub.from_env()
+    typer.echo(run(state, feed, gh, max_usd, max_skills, model))
+    if dry_run:
+        for issue in gh.issues.values():
+            typer.echo(f"\n=== {issue['title']}\n\n{issue['body']}")
