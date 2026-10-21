@@ -31,6 +31,18 @@ TEMPLATES = {
                          "c": ("egress", "egress")}),
 }
 NETWORK = {"curl", "wget"}
+# Once a property is one egress away from breaking, every later Bash command in the session starts
+# with these set (through CLAUDE_ENV_FILE), so proxy-aware tools (curl, pip, npm, git, requests,
+# node fetch) connect to a closed port instead of the internet. Loopback stays reachable.
+DEAD = "http://127.0.0.1:9"
+OFFLINE = " ".join([*(f"{k}={DEAD}" for k in ("HTTPS_PROXY", "HTTP_PROXY", "ALL_PROXY", "https_proxy",
+                                              "http_proxy", "all_proxy")),
+                    "NO_PROXY=localhost,127.0.0.1,::1", "no_proxy=localhost,127.0.0.1,::1",
+                    # ponytail: Node before 22.21 ignores proxies, so its fetch still gets out
+                    "NODE_USE_ENV_PROXY=1"])
+# curl, git, node and requests name the closed port; urllib only says refused.
+# ponytail: a refused localhost service also matches; check the port too if that misleads
+REFUSED = re.compile(r"127\.0\.0\.1(?::|\s+port\s+|', port=)9\b|Errno 111\] Connection refused")
 LOOPBACK = {"localhost", "127.0.0.1", "::1", "[::1]"}  # traffic that never leaves the machine
 
 
@@ -213,6 +225,21 @@ def describe(tool: str, args: dict, root: Path) -> str:
     return f"{tool} {str(detail)[:80]}" if detail else tool
 
 
+def offline_reason(guard: dict, state: dict) -> str | None:
+    """Why Bash runs offline: a property whose next egress, to any host, would break it."""
+    for i, p in enumerate(guard["properties"]):
+        table, cur = guard["automata"][p["template"]], state.get(str(i))
+        sink = next((k for k, (kind, _) in p["letters"].items() if kind == "egress"), None)
+        if cur and sink and table["delta"][cur["state"]].get(sink) in table["bad"]:
+            return f"{'; '.join(cur['why'])} ({p['rule']} via {' → '.join(p['path'])})"
+    return None
+
+
+def notice(name: str, user: str, claude: str) -> dict:
+    return {"systemMessage": user,
+            "hookSpecificOutput": {"hookEventName": name, "additionalContext": claude}}
+
+
 def hook(event: dict) -> dict | None:
     """Handle one hook event; returns the JSON to print, if any."""
     root = Path(os.environ.get("CLAUDE_PROJECT_DIR") or event.get("cwd") or ".")
@@ -220,13 +247,17 @@ def hook(event: dict) -> dict | None:
         guard = json.loads((root / GUARD).read_text())
     except FileNotFoundError:
         return None  # no guard file: this project is not guarded
-    name = event.get("hook_event_name")
+    name, session = event.get("hook_event_name"), event.get("session_id", "default")
+    offline = STATE / f"{session}.offline"
     if name == "SessionStart":
+        if os.environ.get("CLAUDE_ENV_FILE"):  # Claude Code runs this file before each Bash command
+            with open(os.environ["CLAUDE_ENV_FILE"], "a") as f:
+                f.write(f"if [ -e {shlex.quote(str(offline))} ]; then export {OFFLINE}; fi\n")
         if inputs(root) != guard["hash"]:
             return {"systemMessage": "crosskill guard: skills, MCP servers or settings changed "
                                      "since `crosskill guard init`; rerun it to update the properties"}
         return None
-    state_file = STATE / f"{event.get('session_id', 'default')}.json"
+    state_file = STATE / f"{session}.json"
     try:
         state = json.loads(state_file.read_text())
     except FileNotFoundError:
@@ -242,6 +273,20 @@ def hook(event: dict) -> dict | None:
         # ponytail: last writer wins when parallel calls race; lock the file if that loses taint
         state_file.parent.mkdir(parents=True, exist_ok=True)
         state_file.write_text(json.dumps(new))
+        why = offline_reason(guard, new)
+        if why and not offline.exists():
+            offline.touch()
+            return notice(name, f"crosskill guard: internet is now off for Bash commands in this "
+                                f"session. Reason: {why}.",
+                          f"crosskill guard turned off network access for Bash commands in this "
+                          f"session (localhost still works) because: {why}. Network errors from "
+                          f"now on come from the guard, not from the code; do not work around it.")
+    output = json.dumps(event.get("tool_response") or event.get("error") or "")
+    if tool == "Bash" and offline.exists() and REFUSED.search(output):
+        why = offline_reason(guard, state if name == "PostToolUseFailure" else new)
+        return notice(name, f"crosskill guard blocked network access from `{args.get('command')}`: "
+                            f"{why}.",
+                      f"This command's network access was blocked by crosskill guard: {why}.")
     return None
 
 

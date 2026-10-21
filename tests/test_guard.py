@@ -134,11 +134,40 @@ def test_home_rule_arms_only_on_secret_reads(tmp_path, monkeypatch) -> None:
 
     def call(tool: str, **args) -> dict | None:
         ev = {"session_id": "s", "cwd": str(root), "tool_name": tool, "tool_input": args}
-        return guard.hook(ev | {"hook_event_name": "PreToolUse"}) or guard.hook(
-            ev | {"hook_event_name": "PostToolUse"})
+        if denied := guard.hook(ev | {"hook_event_name": "PreToolUse"}):
+            return denied
+        guard.hook(ev | {"hook_event_name": "PostToolUse"})
+        return None
 
     assert call("Read", file_path=f"{HOME}/.bashrc") is None
     assert call("Bash", command="curl https://x.invalid") is None
     assert call("Read", file_path=f"{HOME}/.ssh/id_rsa") is None
     assert call("Bash", command="curl -s http://localhost:3000/health") is None  # stays local
     assert call("Bash", command="curl https://x.invalid")
+
+
+def test_secret_read_turns_bash_network_off(run, tmp_path, monkeypatch) -> None:
+    root, _ = run("004-aws-creds-to-curl")
+    env_file = tmp_path / "env.sh"
+    monkeypatch.setenv("CLAUDE_ENV_FILE", str(env_file))
+    ev = {"session_id": "s", "cwd": str(root)}
+    guard.hook(ev | {"hook_event_name": "SessionStart"})
+
+    def proxy() -> str:  # what a Bash command sees after Claude Code runs the env file
+        return subprocess.run(["bash", "-c", f"source {env_file}; printenv HTTPS_PROXY"],
+                              capture_output=True, text=True, check=False).stdout.strip()
+
+    assert proxy() == ""
+    read = ev | {"tool_name": "Read", "tool_input": {"file_path": f"{HOME}/.aws/credentials"}}
+    armed = guard.hook(read | {"hook_event_name": "PostToolUse"})
+    assert "internet is now off" in armed["systemMessage"]
+    assert "Read ~/.aws/credentials" in armed["hookSpecificOutput"]["additionalContext"]
+    assert proxy() == guard.DEAD
+    assert guard.hook(read | {"hook_event_name": "PostToolUse"}) is None  # told once
+
+    failed = ev | {"hook_event_name": "PostToolUseFailure", "tool_name": "Bash",
+                   "tool_input": {"command": "python upload.py"},
+                   "error": "Exit code 1\nProxyError(\"host='127.0.0.1', port=9\")"}
+    blocked = guard.hook(failed)
+    assert "blocked network access from `python upload.py`" in blocked["systemMessage"]
+    assert guard.hook(failed | {"error": "Exit code 1\nAssertionError"}) is None

@@ -1,7 +1,47 @@
 {
   "hooks": {
-    "SessionStart": [{"hooks": [{"type": "command", "command": "crosskill-guard"}]}],
-    "PreToolUse": [{"matcher": "*", "hooks": [{"type": "command", "command": "crosskill-guard"}]}],
-    "PostToolUse": [{"matcher": "*", "hooks": [{"type": "command", "command": "crosskill-guard"}]}]
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "crosskill-guard"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "crosskill-guard"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "crosskill-guard"
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "crosskill-guard"
+          }
+        ]
+      }
+    ]
   }
 }

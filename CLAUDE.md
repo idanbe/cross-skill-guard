@@ -19,7 +19,10 @@ v1 0.75 / 0.86, v2 0.88 / 0.88, $0.23. With v2 + flash the scan gives exactly th
 findings on all 77 installs (static alone flags 21/24 toxic), 0 false findings on clean. OpenRouter models that reject `temperature` (Sonnet
 5.5, GPT-5.6) fail under `require_parameters`. Stage 3 in progress: `crosskill guard` (templates,
 automata, hooks, plugin) works and blocks the demo flow in real Claude Code, ~25 ms per hook call.
-Not done yet: the CONNECT proxy, and a week of own use with no false blocks.
+Instead of the plan's CONNECT proxy, an armed egress property turns the network off for later
+Bash commands (proxy env vars to a closed port, via CLAUDE_ENV_FILE): no install, same reach as a
+proxy (proxy-aware tools only; Node before 22.21 ignores it). Not done yet: a week of own use with
+no false blocks.
 
 Langfuse is the local Docker stack from the triage-guard project (http://localhost:3000, project
 `cross-skill-guard`); `.env` holds its keys and is gitignored.
@@ -72,6 +75,11 @@ LTL runtime hooks and a LangGraph daily feed on top of these findings.
   the saved transition tables with the stdlib, so keep hook-path imports stdlib-only. Tool calls
   become `read`/`egress`/`untrusted`/`exec` events; PreToolUse denies, PostToolUse saves the state
   per session in `~/.cache/crosskill/guard/`, SessionStart warns when the install hash changed.
+  SessionStart also appends a line to `CLAUDE_ENV_FILE` (run before every Bash command) that sets
+  `HTTPS_PROXY` etc. to `127.0.0.1:9` once `<session>.offline` exists; PostToolUse creates that
+  flag when a property is one egress from breaking, and PostToolUse(Failure) reports refused
+  connections to the user (`systemMessage`) and to Claude (`additionalContext`). Rewriting the
+  command with `updatedInput` doesn't work: Claude Code re-checks permissions on the new command.
   `plugin/` is the Claude Code plugin that wires the hooks.
 - `corpus/`: what every stage is measured against.
   - `toxic/NNN-name/` and `clean/NNN-name/`: each is one install with `skills/<name>/SKILL.md`,
