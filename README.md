@@ -126,6 +126,27 @@ after a secret read. For a hard network boundary, also turn on Claude Code's
 [sandbox](https://code.claude.com/docs/en/sandboxing). The scan reads the project's settings, not
 `~/.claude`.
 
+## Daily feed
+
+A GitHub Actions workflow (`.github/workflows/daily.yml`, 06:17 UTC) checks new ClawHub skills
+against a set of popular skills and MCP servers, and looks for toxic combinations between them.
+ClawHub is the only source for now.
+
+```
+crosskill daily --state DIR --feed DIR [--max-usd 0.5] [--max-skills 50] [--dry-run]
+```
+
+- The popular set warms up over the first ~2 runs at the $0.50 cap, before new skills get checked.
+- Candidates appear as GitHub issues labeled `crosskill-candidate`. Add `approve` to publish one
+  to `feed/advisories.json`, or `reject` to drop it for good.
+- Run state (checkpoints, ledger, cursor, caches) lives on the `data` branch. Downloaded skills
+  are never committed; they are kept in the Actions cache.
+- To keep candidates private until approval, set the `CROSSKILL_ISSUES_REPO` (`owner/name`) and
+  `CROSSKILL_ISSUES_TOKEN` secrets. Without them, issues go to this repository.
+- `crosskill scan` prints "possible match" lines for installed skills that appear in the feed
+  (`--offline` or `CROSSKILL_OFFLINE` skips the lookup).
+- `crosskill eval --triage` scores the Jev triage gate.
+
 ## Develop
 
 ```

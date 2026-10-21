@@ -23,7 +23,11 @@ class GitHub:
 
     @classmethod
     def from_env(cls) -> "GitHub":
-        return cls(os.environ["GITHUB_REPOSITORY"], os.environ["GITHUB_TOKEN"])
+        """CROSSKILL_ISSUES_REPO/TOKEN (a private issues repo) win over the workflow's own."""
+        env = os.environ
+        repo = env.get("CROSSKILL_ISSUES_REPO") or env["GITHUB_REPOSITORY"]
+        token = env.get("CROSSKILL_ISSUES_TOKEN") or env["GITHUB_TOKEN"]
+        return cls(repo, token)
 
     def _call(self, method: str, path: str, body: dict | None = None):
         headers = {

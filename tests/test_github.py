@@ -62,3 +62,19 @@ def test_memory_round_trip():
     assert gh.issues[n]["state"] == "closed"
     assert gh.issues[n]["comments"] == ["done"]
     assert gh.create_issue("U", "", [])[0] != n
+
+
+def test_from_env_prefers_issues_repo(monkeypatch):
+    monkeypatch.setenv("GITHUB_REPOSITORY", "o/main")
+    monkeypatch.setenv("GITHUB_TOKEN", "t1")
+    monkeypatch.delenv("CROSSKILL_ISSUES_REPO", raising=False)
+    monkeypatch.delenv("CROSSKILL_ISSUES_TOKEN", raising=False)
+    gh = GitHub.from_env()
+    assert (gh.repo, gh.token) == ("o/main", "t1")
+    monkeypatch.setenv("CROSSKILL_ISSUES_REPO", "o/private")
+    monkeypatch.setenv("CROSSKILL_ISSUES_TOKEN", "t2")
+    gh = GitHub.from_env()
+    assert (gh.repo, gh.token) == ("o/private", "t2")
+    monkeypatch.setenv("CROSSKILL_ISSUES_REPO", "")  # unset secrets arrive as empty strings
+    monkeypatch.setenv("CROSSKILL_ISSUES_TOKEN", "")
+    assert GitHub.from_env().repo == "o/main"

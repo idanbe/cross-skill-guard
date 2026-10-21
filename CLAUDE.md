@@ -70,6 +70,17 @@ LTL runtime hooks and a LangGraph daily feed on top of these findings.
   into `Grant`s (quote must be in the file; `rule` lets `deny` apply).
 - `src/crosskill/evals.py`: fact-level precision/recall against `expected_facts.json`, run as a
   Langfuse experiment (`crosskill eval`).
+- Daily feed (stage 5, `crosskill daily`, `.github/workflows/daily.yml`): `triage.py` (Jev
+  decisions API gate, threshold 0.2; `crosskill eval --triage`), `sources.py` (ClawHub listing and
+  download, oldest first, safe extraction), `candidates.py` (`check` with keep/rank on scan, key,
+  score, advisory render), `github.py` (`GitHub` issues client, `MemoryGitHub` for tests; repo and
+  token from `CROSSKILL_ISSUES_REPO`/`CROSSKILL_ISSUES_TOKEN`, else `GITHUB_*`), `daily.py`
+  (LangGraph graph open_issue → wait (interrupt) → publish | close, ledger, cursor, budget gate,
+  rolling pool), `known.py` (scan's "possible match" lines; `--offline`/`CROSSKILL_OFFLINE`).
+  `pipeline/popular-mcp.json` lists popular MCP servers. State dir (the `data` branch in CI):
+  `checkpoints.sqlite`, `ledger.json`, `cursor.json`, `popular.json`, `cache/` (LLM and Jev
+  answers). `skills/` (downloaded third-party skills) is never committed: the workflow keeps it in
+  `actions/cache` and gitignores it on `data`. `feed/` on `main` holds `advisories.json` and an index.
 - `src/crosskill/scan.py`: grounds and solves, keeps the shortest path per finding, renders the
   file:line chain as text or SARIF. `src/crosskill/cli.py`: typer app.
 - `src/crosskill/guard.py`: runtime guard. Each finding fills an LTL template (`G(a → G ¬b)` for
