@@ -334,7 +334,7 @@ def discover(state_dir: Path, gh, feed_dir: Path, max_usd: float, max_skills: in
         pop = _popular_set(state_dir, model, budget, list_popular, fetch, errors, Path(tmp),
                            notes)
         if pop is None:
-            errors.append("discovery stopped: no popular set (budget or listing)")
+            errors.append("discovery stopped: no popular set (budget, deadline or listing)")
             return keys
         try:
             new = list_new(cursor["clawhub"], max_skills, notes=notes)
