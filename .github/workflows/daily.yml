@@ -21,13 +21,21 @@ jobs:
           ref: main
           fetch-depth: 0
       - name: Check out the data branch into state/
+        id: state
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          if git ls-remote --exit-code --heads origin data >/dev/null; then
+          # Exit code 2 is the only "no data branch"; any other failure (network, auth) stops the
+          # job here, so a run never starts from empty state and overwrites the real one.
+          rc=0
+          git ls-remote --exit-code --heads origin data >/dev/null || rc=$?
+          if [ "$rc" -eq 0 ]; then
             git fetch origin data
             git worktree add state origin/data
             git -C state checkout -B data origin/data
+          elif [ "$rc" -ne 2 ]; then
+            echo "::error::git ls-remote failed with exit code $rc"
+            exit 1
           else
             git worktree add --detach state
             git -C state checkout --orphan data
@@ -59,7 +67,7 @@ jobs:
       # Run even when the daily step failed, so partial progress is kept.
       - name: Commit feed to main
         id: feed
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.state.outcome == 'success' }}
         run: |
           git add feed
           if git diff --cached --quiet; then echo "feed unchanged"; exit 0; fi
@@ -71,7 +79,7 @@ jobs:
           done
           exit 1
       - name: Commit state to data
-        if: ${{ !cancelled() && steps.feed.outcome != 'failure' }}
+        if: ${{ !cancelled() && steps.state.outcome == 'success' && steps.feed.outcome != 'failure' }}
         working-directory: state
         run: |
           git add -A
