@@ -69,4 +69,4 @@ def _hit(m: dict, keys: set[tuple]) -> bool:
 
 def matches(advisories: list[dict], keys: set[tuple]) -> list[dict]:
     return [a for a in advisories
-            if a.get("components") and all(_hit(c["match"], keys) for c in a["components"])]
+            if a.get("components") and all(_hit(c.get("match") or {}, keys) for c in a["components"])]

@@ -78,3 +78,20 @@ def test_scan_prints_possible_match(tmp_path: Path, monkeypatch) -> None:
     out = runner.invoke(app, ["scan", "--no-llm", "corpus/toxic/020-two-findings"])
     assert "possible match: CK-2026-0001 Bad combo u" in out.output
     assert out.exit_code == 1 and not feed.exists()
+
+
+def test_malformed_advisories_never_break_scan(monkeypatch) -> None:
+    args = ["scan", "--no-llm", "corpus/toxic/020-two-findings"]
+    base = runner.invoke(app, args)
+    mk = lambda **kw: {"components": [{"match": {"kind": "skill", "name": "x"}, **kw}], **kw}
+    feed = [{"id": "CK-1", "components": [{"match": {"kind": "skill", "name": "x"}}]},
+            {"title": "t", "components": [{"match": {"kind": "skill", "name": "x"}, "url": "u"}]},
+            {"id": "CK-3", "components": [{}]}, {"id": "CK-4", "components": ["bad"]}, mk()]
+    monkeypatch.setattr(known, "load", lambda *a, **k: feed)
+    monkeypatch.setenv("CROSSKILL_OFFLINE", "0")
+    g = known.local_keys
+    monkeypatch.setattr(known, "local_keys", lambda r, gr: g(r, gr) | {("skill", "x")})
+    out = runner.invoke(app, args)
+    assert out.exit_code == base.exit_code == 1
+    assert out.output.startswith(base.output.rstrip("\n"))
+    assert out.exception is None or isinstance(out.exception, SystemExit)
