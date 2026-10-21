@@ -1,4 +1,6 @@
 import os
+import shutil
+import tempfile
 from pathlib import Path
 from typing import Annotated
 
@@ -109,8 +111,8 @@ def daily_(
     max_usd: Annotated[float, typer.Option(help="LLM and Jev spend cap for this run")] = 0.5,
     max_skills: Annotated[int, typer.Option(help="Most new skills checked this run")] = 50,
     dry_run: Annotated[bool, typer.Option(
-        "--dry-run", help="In-memory GitHub: print candidates instead of opening issues. "
-        "The ledger still records them, so use a scratch --state")] = False,
+        "--dry-run", help="In-memory GitHub and a copy of --state and --feed: print "
+        "candidates instead of opening issues")] = False,
     model: Model = DEFAULT_MODEL,
 ) -> None:
     """Check new ClawHub skills and hold each candidate for an approve/reject label."""
@@ -118,8 +120,16 @@ def daily_(
     from crosskill.github import GitHub, MemoryGitHub
 
     need_key(False)
-    gh = MemoryGitHub() if dry_run else GitHub.from_env()
-    typer.echo(run(state, feed, gh, max_usd, max_skills, model))
-    if dry_run:
-        for issue in gh.issues.values():
-            typer.echo(f"\n=== {issue['title']}\n\n{issue['body']}")
+    if not dry_run:
+        typer.echo(run(state, feed, GitHub.from_env(), max_usd, max_skills, model))
+        return
+    gh = MemoryGitHub()
+    with tempfile.TemporaryDirectory() as tmp:  # a dry run never writes the real state or feed
+        copies = []
+        for src, name in ((state, "state"), (feed, "feed")):
+            copies.append(Path(tmp) / name)
+            if src.exists():
+                shutil.copytree(src, copies[-1], symlinks=True)
+        typer.echo(run(copies[0], copies[1], gh, max_usd, max_skills, model))
+    for issue in gh.issues.values():
+        typer.echo(f"\n=== {issue['title']}\n\n{issue['body']}")

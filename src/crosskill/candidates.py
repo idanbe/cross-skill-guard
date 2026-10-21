@@ -25,12 +25,12 @@ def build_install(root: Path, skill_dirs: dict[str, Path]) -> None:
     shutil.copy(POPULAR, root / ".mcp.json")
 
 
-def check(root: Path, new: str, model: str | None) -> list[dict]:
+def check(root: Path, new: str, model: str | None, llm_for=None) -> list[dict]:
     prefix = f"skills/{new}/"
     # Filter before scan picks one explanation per flow, so a popular server cannot hide a
     # combination that includes the new skill; prefer the fewest components, then the shortest chain.
     return scan(
-        root, model,
+        root, model, llm_for=llm_for,
         keep=lambda f: any(c["file"].startswith(prefix) for c in f["chain"]),
         rank=lambda f: (len({c["component"] for c in f["chain"]}), len(f["chain"]), f["path"]))
 

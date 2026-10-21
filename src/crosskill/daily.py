@@ -6,8 +6,10 @@ cursor.json, popular.json, skills/ (downloads, data only) and cache/ (LLM and Je
 """
 
 import json
+import os
 import tempfile
 import time
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict
 from datetime import date, timedelta
 from pathlib import Path
@@ -25,6 +27,7 @@ from crosskill.sources import Skill
 
 LABELS = ["approve", "reject", "crosskill-candidate"]
 MAX_PER_SKILL = 3
+WORKERS = 8
 POPULAR_MAX_AGE = timedelta(days=7)
 DAY_MS = 86_400_000
 
@@ -183,10 +186,37 @@ def _get(sk: Skill, state_dir: Path, fetch) -> Path:
     return dest / sk.dirname if (dest / sk.dirname).exists() else fetch(sk, dest)
 
 
-def _popular_set(state_dir, model, budget, list_popular, fetch, errors, tmp):
-    """Popular skills and their dirs, refreshed weekly; their LLM facts count toward the budget.
+def _parallel(items: list, fn, budget: Budget, errors: list[str], what: str) -> dict | None:
+    """fn on each item, WORKERS at a time, checking the budget before each batch.
 
-    Returns None when the budget ran out before every popular skill was extracted."""
+    Returns {index: result} for the items that did not raise, or None when the budget ran out."""
+    out = {}
+    with ThreadPoolExecutor(WORKERS) as ex:
+        for i in range(0, len(items), WORKERS):
+            if not budget.left():
+                return None
+            batch = {ex.submit(fn, it): i + j for j, it in enumerate(items[i:i + WORKERS])}
+            for fut, idx in batch.items():
+                try:
+                    out[idx] = fut.result()
+                except Exception as e:  # noqa: BLE001 - that skill is left out, the rest go on
+                    errors.append(f"{what} {items[idx][0].id}: {e!r}")
+    return out
+
+
+def _gate(d: Path, dirname: str, tmp: Path) -> bool:
+    """Worth an LLM read: a relevant static grant, or a role Jev sees in SKILL.md."""
+    if any(relevant(x.kind, x.arg) for x in extract(_solo(tmp, dirname, d))):
+        return True
+    skill_md = d / "SKILL.md"
+    return skill_md.exists() and triage.passes(triage.roles(skill_md.read_text(errors="replace")))
+
+
+def _popular_set(state_dir, model, budget, list_popular, fetch, errors, tmp):
+    """Popular skills, their dirs and the dirnames the LLM reads, refreshed weekly.
+
+    Jev gates each skill; the gated ones are extracted in parallel within the budget (cached
+    after the first run). Returns None when the budget ran out first."""
     path = state_dir / "popular.json"
     pop = _load(path, None)
     if pop is None or date.today() - date.fromisoformat(pop["fetched"]) >= POPULAR_MAX_AGE:
@@ -198,36 +228,42 @@ def _popular_set(state_dir, model, budget, list_popular, fetch, errors, tmp):
             errors.append(f"popular listing: {e!r}")
             if pop is None:
                 return None
-    skills, dirs = {}, {}
+    entries = []
     for d in pop["skills"]:
         sk = Skill(**d)
-        if not budget.left():
-            return None
         try:
-            dirs[sk.dirname] = _get(sk, state_dir, fetch)
-            if model:
-                extract(_solo(tmp, sk.dirname, dirs[sk.dirname]), model)  # warms the LLM cache
-            skills[sk.dirname] = sk
+            entries.append((sk, _get(sk, state_dir, fetch)))
         except Exception as e:  # noqa: BLE001 - left out, so it cannot break every check
-            dirs.pop(sk.dirname, None)
             errors.append(f"popular {sk.id}: {e!r}")
-    return skills, dirs
+    if not model:
+        return {sk.dirname: sk for sk, _ in entries}, {sk.dirname: d for sk, d in entries}, set()
+    gate = _parallel(entries, lambda e: _gate(e[1], e[0].dirname, tmp), budget, errors, "triage")
+    if gate is None:
+        return None
+    read = [entries[i] for i, ok in sorted(gate.items()) if ok]
+    warm = _parallel(read, lambda e: extract(_solo(tmp, e[0].dirname, e[1]), model), budget,
+                     errors, "extract")
+    if warm is None:
+        return None
+    failed = {read[i][0].dirname for i in range(len(read)) if i not in warm}
+    kept = [(sk, d) for i, (sk, d) in enumerate(entries) if i in gate and sk.dirname not in failed]
+    llm_set = {sk.dirname for sk, _ in read} - failed
+    return {sk.dirname: sk for sk, _ in kept}, {sk.dirname: d for sk, d in kept}, llm_set
 
 
 def _check(sk, state_dir, pop, model, gh, feed_dir, g, ledger, fetch, tmp) -> list[str]:
     """Check one new skill; start a thread for each new candidate. Returns their keys."""
-    skills, dirs = pop
+    skills, dirs, llm_set = pop
     d = _get(sk, state_dir, fetch)
-    if not any(relevant(x.kind, x.arg) for x in extract(_solo(tmp, sk.dirname, d))):
-        skill_md = d / "SKILL.md"
-        if not skill_md.exists() or not triage.passes(triage.roles(skill_md.read_text(errors="replace"))):
-            return []
+    if not _gate(d, sk.dirname, tmp):
+        return []
     root = Path(tempfile.mkdtemp(dir=tmp))
     candidates.build_install(root, {**dirs, sk.dirname: d})
     skills = {**skills, sk.dirname: sk}
     mcp = json.loads(candidates.POPULAR.read_text())["mcpServers"]
     found = []
-    for f in candidates.check(root, sk.dirname, model):
+    llm_for = (llm_set | {sk.dirname}).__contains__
+    for f in candidates.check(root, sk.dirname, model, llm_for):
         comps = candidates.components(f, skills, mcp)
         k = candidates.key(f, comps)
         if k not in ledger and k not in {c["key"] for c in found}:
@@ -284,6 +320,7 @@ def run(state_dir: Path, feed_dir: Path, gh, max_usd: float = 0.5, max_skills: i
         model: str | None = llm.DEFAULT_MODEL, **sources_) -> str:
     """One daily run: resume labelled candidates, then discover new ones. Returns a summary."""
     state_dir.mkdir(parents=True, exist_ok=True)
+    os.environ["LANGFUSE_TRACING_ENABLED"] = "false"  # no traces from the daily run (langfuse 4.x)
     saved_cache, start, errors = llm.CACHE, _spent(), []
     llm.CACHE = state_dir / "cache" / "crosskill" / "llm"  # Jev answers go next to it
     try:

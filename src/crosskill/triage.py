@@ -41,7 +41,8 @@ def roles(text: str, model: str = "typesafe/jev-1.13") -> dict[str, float]:
         return json.loads(path.read_text())
     r = _post({"model": model, "state": {"file": "SKILL.md", "text": text}, "questions": questions})
     out = {k: v["noul"] for k, v in r["answers"].items()}
-    spent_usd += (r.get("usage") or {}).get("cost") or 0
+    with llm.SPEND_LOCK:
+        spent_usd += (r.get("usage") or {}).get("cost") or 0
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(out))
     return out

@@ -187,3 +187,62 @@ def test_one_bad_skill_does_not_stop_the_run(tmp_path):
     summary = go(tmp_path, gh, src)  # "broken" has no source dir: its download raises
     assert "acme/broken" in summary and len(gh.issues) == 1
     assert json.loads((tmp_path / "state" / "cursor.json").read_text()) == {"clawhub": T0 + 2}
+
+
+def test_crash_after_publish_reruns_once(tmp_path, monkeypatch):
+    gh, src = MemoryGitHub(), t4_source()
+    go(tmp_path, gh, src)
+    gh.set_labels(1, {"approve"})
+    real_close, calls = gh.close, []
+
+    def close(n, comment):
+        calls.append(n)
+        if len(calls) == 1:
+            raise RuntimeError("network down after publish")
+        real_close(n, comment)
+
+    monkeypatch.setattr(gh, "close", close)
+    summary = go(tmp_path, gh, src)
+    assert "network down" in summary and [e["status"] for e in ledger(tmp_path).values()] == ["pending"]
+    assert len(json.loads((tmp_path / "feed" / "advisories.json").read_text())) == 1
+    go(tmp_path, gh, src)  # new SqliteSaver, Command(resume="approve") again
+    advs = json.loads((tmp_path / "feed" / "advisories.json").read_text())
+    assert [a["id"] for a in advs] == [f"CK-{YEAR}-0001"]
+    assert gh.issues[1]["state"] == "closed" and len(calls) == 2
+    assert [e["status"] for e in ledger(tmp_path).values()] == ["approved"]
+
+
+def test_jev_gates_popular_skills(tmp_path, offline):
+    src = Source([skill("uploader", T0 + 2)], [skill("cost-report", T0), skill("fmt", T0)],
+                 {"uploader": T4 / "uploader", "cost-report": T4 / "cost-report",
+                  "fmt": next(CLEAN.iterdir())})
+    gh = MemoryGitHub()
+    go(tmp_path, gh, src)
+    # the LLM reads cost-report (relevant static grant) and uploader, never the quiet fmt
+    assert offline == {"llm": 2, "jev": 1} and len(gh.issues) == 1
+
+
+def test_dry_run_leaves_state_untouched(tmp_path, monkeypatch):
+    from typer.testing import CliRunner
+
+    from crosskill.cli import app
+
+    state, feed = tmp_path / "state", tmp_path / "feed"
+    state.mkdir()
+    (state / "ledger.json").write_text("{}")
+    seen = []
+
+    def fake_run(state_dir, feed_dir, gh, *a):
+        seen.append(state_dir)
+        assert (state_dir / "ledger.json").read_text() == "{}"
+        (state_dir / "ledger.json").write_text('{"x": 1}')
+        (feed_dir / "README.md").parent.mkdir(parents=True, exist_ok=True)
+        gh.create_issue("[candidate] t", "body", ["crosskill-candidate"])
+        return "summary"
+
+    monkeypatch.setattr(daily, "run", fake_run)
+    monkeypatch.setenv("OPENROUTER_API_KEY", "x")
+    r = CliRunner().invoke(app, ["daily", "--state", str(state), "--feed", str(feed), "--dry-run"])
+    assert r.exit_code == 0, r.output
+    assert "summary" in r.output and "[candidate] t" in r.output
+    assert seen[0] != state and (state / "ledger.json").read_text() == "{}" and not feed.exists()

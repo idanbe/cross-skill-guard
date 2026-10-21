@@ -63,13 +63,15 @@ def finding(atom: clingo.Symbol, grants: list[Grant]) -> tuple[list[int], dict]:
 
 
 def scan(root: Path, model: str | None = None, keep: Callable[[dict], bool] | None = None,
-         rank: Callable[[dict], tuple] | None = None) -> list[dict]:
+         rank: Callable[[dict], tuple] | None = None,
+         llm_for: Callable[[str], bool] | None = None) -> list[dict]:
     """Findings for an install. `model` turns on the LLM extractor; None is static only.
 
     `keep` drops findings before the best-per-key choice; `rank` replaces the default
     (shortest path, then name) ordering used to choose among findings with the same key.
+    `llm_for` limits the LLM extractor to the skill directories it accepts.
     """
-    grants = extract(Path(root), model)
+    grants = extract(Path(root), model, llm_for)
     ctl = clingo.Control(["--warn=none"])
     ctl.add("base", [], RULES + facts(grants))
     ctl.ground([("base", [])])

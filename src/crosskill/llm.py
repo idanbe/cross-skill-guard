@@ -7,6 +7,7 @@ disk, so the same text with the same model and prompt is never paid for twice.
 import hashlib
 import json
 import os
+import threading
 import time
 from pathlib import Path
 from typing import Literal
@@ -17,6 +18,7 @@ PROMPT = (Path(__file__).parent / "prompt.md").read_text()
 DEFAULT_MODEL = "deepseek/deepseek-v4.1-flash"
 CACHE = Path(os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache") / "crosskill" / "llm"
 spent_usd = 0.0  # cost of uncached calls this process
+SPEND_LOCK = threading.Lock()  # the daily run extracts from worker threads
 
 
 class Fact(BaseModel):
@@ -56,7 +58,8 @@ def facts_for(name: str, text: str, model: str, prompt=None) -> dict:
         return {**json.loads(path.read_text()), "cached": True}
     global spent_usd
     out = complete(system, user, model, prompt)
-    spent_usd += out.get("cost") or 0
+    with SPEND_LOCK:
+        spent_usd += out.get("cost") or 0
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(out))
     return out
