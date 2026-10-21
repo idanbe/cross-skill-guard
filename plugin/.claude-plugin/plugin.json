@@ -1,0 +1,5 @@
+{
+  "name": "crosskill-guard",
+  "description": "Blocks the toxic flows that `crosskill guard init` found, at runtime",
+  "version": "0.0.1"
+}

@@ -22,6 +22,16 @@ def load_env(path: Path = Path(".env")) -> None:
                 os.environ.setdefault(key.strip(), value.strip())
 
 
+guard_app = typer.Typer(help="Runtime guard: Claude Code hooks that block toxic flows (plugin/).")
+app.add_typer(guard_app, name="guard")
+
+
+def need_key(no_llm: bool) -> None:
+    if not no_llm and not os.environ.get("OPENROUTER_API_KEY"):
+        typer.echo("OPENROUTER_API_KEY is not set; pass --no-llm for a static-only scan", err=True)
+        raise typer.Exit(code=2)
+
+
 @app.callback()
 def main() -> None:
     """crosskill command line interface."""
@@ -42,9 +52,7 @@ def scan(
     model: Model = DEFAULT_MODEL,
 ) -> None:
     """Scan an installation for toxic flows. Exits 1 when any are found."""
-    if not no_llm and not os.environ.get("OPENROUTER_API_KEY"):
-        typer.echo("OPENROUTER_API_KEY is not set; pass --no-llm for a static-only scan", err=True)
-        raise typer.Exit(code=2)
+    need_key(no_llm)
     findings = run_scan(path, None if no_llm else model)
     typer.echo(to_sarif(findings) if sarif else to_text(findings))
     raise typer.Exit(code=1 if findings else 0)
@@ -59,3 +67,19 @@ def eval_(
     from crosskill.evals import run
 
     typer.echo(run(model, push_only))
+
+
+@guard_app.command("init")
+def guard_init(
+    path: Annotated[Path, typer.Argument(help="Project to guard")] = Path("."),
+    no_llm: Annotated[bool, typer.Option("--no-llm", help="Static extractors only")] = False,
+    model: Model = DEFAULT_MODEL,
+) -> None:
+    """Scan the project and write .claude/crosskill-guard.json, the properties the hooks enforce."""
+    from crosskill.guard import GUARD, init
+
+    need_key(no_llm)
+    guard = init(path, None if no_llm else model)
+    typer.echo(f"{len(guard['properties'])} properties written to {path / GUARD}")
+    for p in guard["properties"]:
+        typer.echo(f"  {p['ltl']}  ({p['rule']} via {' → '.join(p['path'])})")

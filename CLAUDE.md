@@ -17,7 +17,9 @@ install). Stage 2 done. Evals per prompt version (P / R, cost per corpus run):
 `deepseek/deepseek-v4.1-flash` v1 0.83 / 0.96, v2 0.96 / 0.96, $0.03; `deepseek/deepseek-v4-pro`
 v1 0.75 / 0.86, v2 0.88 / 0.88, $0.23. With v2 + flash the scan gives exactly the expected
 findings on all 77 installs (static alone flags 21/24 toxic), 0 false findings on clean. OpenRouter models that reject `temperature` (Sonnet
-5.5, GPT-5.6) fail under `require_parameters`.
+5.5, GPT-5.6) fail under `require_parameters`. Stage 3 in progress: `crosskill guard` (templates,
+automata, hooks, plugin) works and blocks the demo flow in real Claude Code, ~25 ms per hook call.
+Not done yet: the CONNECT proxy, and a week of own use with no false blocks.
 
 Langfuse is the local Docker stack from the triage-guard project (http://localhost:3000, project
 `cross-skill-guard`); `.env` holds its keys and is gitignored.
@@ -37,6 +39,8 @@ crosskill scan corpus/toxic/020-two-findings          # text; exit 1 when flows 
 crosskill scan --no-llm --sarif corpus/toxic/020-two-findings  # static only, SARIF 2.1.0
 crosskill eval --push-only   # upload labels (dataset) and prompt.md to Langfuse
 crosskill eval --model M     # run the extractor on the dataset, scores per prompt version
+crosskill guard init --no-llm PATH   # write PATH/.claude/crosskill-guard.json (properties + automata)
+claude --plugin-dir plugin  # load the guard hooks (they run `crosskill-guard`, which must be on PATH)
 ```
 
 ## Architecture
@@ -62,6 +66,13 @@ LTL runtime hooks and a LangGraph daily feed on top of these findings.
   Langfuse experiment (`crosskill eval`).
 - `src/crosskill/scan.py`: grounds and solves, keeps the shortest path per finding, renders the
   file:line chain as text or SARIF. `src/crosskill/cli.py`: typer app.
+- `src/crosskill/guard.py`: runtime guard. Each finding fills an LTL template (`G(a → G ¬b)` for
+  secret_exfiltration and untrusted_to_execution, `G((O a ∧ O b) → ¬c)` for lethal_trifecta).
+  python-statemachine builds the automata at `init` only (importing it takes ~90 ms); hooks step
+  the saved transition tables with the stdlib, so keep hook-path imports stdlib-only. Tool calls
+  become `read`/`egress`/`untrusted`/`exec` events; PreToolUse denies, PostToolUse saves the state
+  per session in `~/.cache/crosskill/guard/`, SessionStart warns when the install hash changed.
+  `plugin/` is the Claude Code plugin that wires the hooks.
 - `corpus/`: what every stage is measured against.
   - `toxic/NNN-name/` and `clean/NNN-name/`: each is one install with `skills/<name>/SKILL.md`,
     an optional `.mcp.json` and `settings.json`, and an `expected.json`.

@@ -1,0 +1,7 @@
+{
+  "hooks": {
+    "SessionStart": [{"hooks": [{"type": "command", "command": "crosskill-guard"}]}],
+    "PreToolUse": [{"matcher": "*", "hooks": [{"type": "command", "command": "crosskill-guard"}]}],
+    "PostToolUse": [{"matcher": "*", "hooks": [{"type": "command", "command": "crosskill-guard"}]}]
+  }
+}
