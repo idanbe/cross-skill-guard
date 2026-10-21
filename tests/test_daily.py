@@ -410,3 +410,15 @@ def test_cli_passes_max_minutes(tmp_path, monkeypatch):
                                  "--max-minutes", "7"])
     assert r.exit_code == 0, r.output
     assert seen[0][-1] == 7
+
+
+def test_listing_notes_reach_the_summary(tmp_path):
+    src = t4_source()
+
+    def list_new(after_ms, limit, notes):
+        notes.append("listing truncated: 100 pages read before reaching the cursor")
+        return src.updated_since(after_ms, limit)
+
+    summary = daily.run(tmp_path / "state", tmp_path / "feed", MemoryGitHub(), list_new=list_new,
+                        list_popular=src.popular, fetch=src.download)
+    assert "  listing truncated" in summary

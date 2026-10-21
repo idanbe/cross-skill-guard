@@ -57,7 +57,8 @@ def _skill(it: dict) -> Skill:
                  int(it["updatedAt"]), f"https://clawhub.ai/{owner}/skills/{slug}")
 
 
-def _pages(sort: str, get, max_pages: int = 100):
+def _pages(sort: str, get, max_pages: int, seen: dict):
+    """Listing items, page by page. Sets seen["truncated"] when max_pages ends it early."""
     cursor = None
     for _ in range(max_pages):
         url = f"{API}/skills?sort={sort}&limit=100"
@@ -68,24 +69,51 @@ def _pages(sort: str, get, max_pages: int = 100):
         cursor = page.get("nextCursor")
         if not cursor:
             return
+    seen["truncated"] = True
 
 
-def updated_since(after_ms: int, limit: int, get=http_json, max_pages: int = 100) -> list[Skill]:
-    """The oldest `limit` skills updated after `after_ms`, oldest first."""
+def _parse(it, notes: list[str]) -> Skill | None:
+    """A Skill, or None (logged in notes) for an item without the fields one needs."""
+    try:
+        return _skill(it)
+    except (KeyError, TypeError, ValueError, AttributeError) as e:
+        name = f"{it.get('ownerHandle')}/{it.get('slug')}" if isinstance(it, dict) else repr(it)[:60]
+        notes.append(f"listing: skipped item {name}: {e!r}")
+        return None
+
+
+def updated_since(after_ms: int, limit: int, get=http_json, max_pages: int = 100,
+                  notes: list[str] | None = None) -> list[Skill]:
+    """The oldest `limit` skills updated after `after_ms`, oldest first.
+
+    Malformed items are skipped with a line in `notes`; so is hitting `max_pages` before reaching
+    `after_ms` ("listing truncated"): skills older than the last page are then never seen."""
+    notes = [] if notes is None else notes
     out: list[Skill] = []
-    for it in _pages("updated", get, max_pages):
-        if int(it["updatedAt"]) <= after_ms:
+    seen: dict = {}
+    for it in _pages("updated", get, max_pages, seen):
+        sk = _parse(it, notes)
+        if sk is None:
+            continue
+        if sk.updated_at <= after_ms:
             break
-        out.append(_skill(it))
+        out.append(sk)
+    else:
+        if seen.get("truncated"):
+            notes.append(f"listing truncated: {max_pages} pages read before reaching the cursor; "
+                         "older updated skills are missed")
     return sorted(out, key=lambda s: s.updated_at)[:limit]
 
 
-def popular(n: int = 200, get=http_json, max_pages: int = 100) -> list[Skill]:
+def popular(n: int = 200, get=http_json, max_pages: int = 100,
+            notes: list[str] | None = None) -> list[Skill]:
+    notes = [] if notes is None else notes
     out: list[Skill] = []
-    for it in _pages("downloads", get, max_pages):
+    for it in _pages("downloads", get, max_pages, {}):
         if len(out) >= n:
             break
-        out.append(_skill(it))
+        if (sk := _parse(it, notes)) is not None:
+            out.append(sk)
     return out
 
 

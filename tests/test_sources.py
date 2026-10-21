@@ -88,3 +88,31 @@ def test_download_skips_traversal_members(tmp_path):
     assert not (tmp_path / "evil").exists()
     assert not (d.parent / "evil").exists()
     assert sorted(p.name for p in d.rglob("*") if p.is_file()) == ["ok.md"]
+
+
+def test_malformed_items_are_skipped_and_logged():
+    bad = item("a", "nover", 450)
+    del bad["latestVersion"], bad["tags"]
+    nostats = item("a", "nostats", 420)
+    del nostats["stats"]
+    get = fake_get([{"items": [item("a", "s5", 500), bad, nostats, item("a", "s4", 400),
+                               item("a", "old", 100)], "nextCursor": None}])
+    notes = []
+    out = sources.updated_since(200, 50, get=get, notes=notes)
+    assert [s.slug for s in out] == ["s4", "s5"]
+    assert len(notes) == 2 and "a/nover" in notes[0] and "a/nostats" in notes[1]
+    notes = []
+    get = fake_get([{"items": [bad, item("a", "x", 1)], "nextCursor": None}])
+    assert [s.slug for s in sources.popular(5, get=get, notes=notes)] == ["x"]
+    assert "a/nover" in notes[0]
+
+
+def test_truncated_listing_is_reported():
+    pages = [{"items": [item("a", f"s{i}", 1000 - i)], "nextCursor": f"c{i}"} for i in range(3)]
+    notes = []
+    out = sources.updated_since(0, 50, get=fake_get(pages), max_pages=3, notes=notes)
+    assert len(out) == 3 and notes and notes[0].startswith("listing truncated")
+    notes = []  # reaching the cursor on the last allowed page is not truncation
+    pages[2]["items"].append(item("a", "old", 0))
+    sources.updated_since(0, 50, get=fake_get(pages), max_pages=3, notes=notes)
+    assert notes == []

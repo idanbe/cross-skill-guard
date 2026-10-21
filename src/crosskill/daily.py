@@ -251,7 +251,7 @@ def _popular_set(state_dir, model, budget, list_popular, fetch, errors, tmp, not
     if pop is None or date.today() - date.fromisoformat(pop["fetched"]) >= POPULAR_MAX_AGE:
         try:
             pop = {"fetched": date.today().isoformat(),
-                   "skills": [asdict(s) for s in list_popular(200)]}
+                   "skills": [asdict(s) for s in list_popular(200, notes=notes)]}
             _save(path, pop)
         except Exception as e:  # noqa: BLE001 - keep last week's set
             errors.append(f"popular listing: {e!r}")
@@ -337,7 +337,7 @@ def discover(state_dir: Path, gh, feed_dir: Path, max_usd: float, max_skills: in
             errors.append("discovery stopped: no popular set (budget or listing)")
             return keys
         try:
-            new = list_new(cursor["clawhub"], max_skills)
+            new = list_new(cursor["clawhub"], max_skills, notes=notes)
         except Exception as e:  # noqa: BLE001 - ends discovery, not the run
             errors.append(f"listing: {e!r}")
             return keys
