@@ -44,7 +44,7 @@ def test_updated_since_pages_and_stops():
 
 def test_updated_since_respects_limit():
     get = fake_get([{"items": [item("a", f"s{i}", 900 - i) for i in range(5)],
-                     "nextCursor": "c"}])
+                     "nextCursor": None}])
     out = sources.updated_since(0, 2, get=get)
     assert [x.slug for x in out] == ["s4", "s3"]
 
