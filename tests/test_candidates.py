@@ -33,6 +33,9 @@ T4 = CORPUS / "toxic/004-aws-creds-to-curl/skills"
 
 def test_check_keeps_only_new_skill_findings(tmp_path):
     root = install(tmp_path, {"acme--cost-report": T4 / "cost-report", "acme--uploader": T4 / "uploader"})
+    got = candidates.check(root, "acme--uploader", None)
+    assert any(f["rule"] == "secret_exfiltration" and f["path"] == ["cost-report", "uploader"]
+               and f["resource"] == "~/.aws/credentials" for f in got)
     found = candidates.check(root, "acme--cost-report", None)
     assert found and {f["rule"] for f in found} == {"secret_exfiltration"}
     assert all(any(c["file"].startswith("skills/acme--cost-report/") for c in f["chain"]) for f in found)
@@ -63,17 +66,12 @@ def combo(tmp_path):
 
 
 def pick(found):
-    """A trifecta that involves the skill and the popular fetch server.
-
-    scan keeps one finding per (resource, sink) with ties broken by name, so the untrusted input
-    may be explained by another popular server (brave-search): that is a three-component
-    combination, which is fine.
-    """
+    """The trifecta made of the skill and the popular fetch server only."""
     sk = {"acme--client-notes": skill("client-notes")}
     for f in found:
         comps = candidates.components(f, sk, POPULAR)
-        if f["rule"] == "lethal_trifecta" and {
-                "clawhub/acme/client-notes", "mcp/fetch"} <= {c["id"] for c in comps}:
+        if f["rule"] == "lethal_trifecta" and {c["id"] for c in comps} == {
+                "clawhub/acme/client-notes", "mcp/fetch"}:
             return f, comps
     raise AssertionError([f["path"] for f in found])
 
@@ -81,11 +79,10 @@ def pick(found):
 def test_combination_with_popular_mcp(tmp_path):
     _root, found = combo(tmp_path)
     _f, comps = pick(found)
-    assert {c["id"] for c in comps} >= {"clawhub/acme/client-notes", "mcp/fetch"}
-    assert len(comps) in (2, 3)
-    comps = [c for c in comps if c["id"] == "mcp/fetch"]
-    assert comps[0]["match"] == {"kind": "mcp", "package": "mcp-server-fetch", "host": None}
-    assert comps[0]["installs"] == POPULAR["fetch"]["x-crosskill"]["installs"]
+    assert len(comps) == 2
+    fetch = next(c for c in comps if c["id"] == "mcp/fetch")
+    assert fetch["match"] == {"kind": "mcp", "package": "mcp-server-fetch", "host": None}
+    assert fetch["installs"] == POPULAR["fetch"]["x-crosskill"]["installs"]
 
 
 def test_key_ignores_versions():

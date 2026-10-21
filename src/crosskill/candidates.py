@@ -27,7 +27,12 @@ def build_install(root: Path, skill_dirs: dict[str, Path]) -> None:
 
 def check(root: Path, new: str, model: str | None) -> list[dict]:
     prefix = f"skills/{new}/"
-    return [f for f in scan(root, model) if any(c["file"].startswith(prefix) for c in f["chain"])]
+    # Filter before scan picks one explanation per flow, so a popular server cannot hide a
+    # combination that includes the new skill; prefer the fewest components, then the shortest chain.
+    return scan(
+        root, model,
+        keep=lambda f: any(c["file"].startswith(prefix) for c in f["chain"]),
+        rank=lambda f: (len({c["component"] for c in f["chain"]}), len(f["chain"]), f["path"]))
 
 
 def _mcp_match(server: dict) -> dict:
