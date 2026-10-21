@@ -51,7 +51,7 @@ The corpus `expected.json` files assume these rules. Change them here first, the
   secret. Only a rule that names a secret path does. This is a deliberate under-approximation:
   counting them would flag almost every install.
 - **Private data:** paths outside the project (`~/work`, `~/clients/**`), databases (postgres,
-  sqlite MCP), mail, private repos. The current project tree is not private data.
+  sqlite MCP), mail, private repos, Slack workspaces (`slack`), Google Drive (`gdrive`). The current project tree is not private data.
 - **Untrusted input:** web content (`WebFetch`, `WebSearch`, fetch and browser MCP servers),
   mail, issues and comments (GitHub MCP), tool results from unknown remote MCP servers, and
   anything `curl` or `wget` download.

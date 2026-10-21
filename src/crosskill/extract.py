@@ -51,7 +51,7 @@ def is_secret(r: str) -> bool:
 
 def is_private(r: str) -> bool:
     return r.startswith(("~", "/", "postgresql://", "postgres://", "mysql://", "sqlite:")) or r in {
-        "mail", "github:private_repos"}
+        "mail", "github:private_repos", "slack", "gdrive"}
 
 
 def bash_caps(arg: str | None) -> list[tuple]:
@@ -241,6 +241,14 @@ def mcp_caps(server: dict) -> list[tuple]:
         if pkg == "@modelcontextprotocol/server-github":
             return [("untrusted", "github:issues"), ("reads", "github:private_repos"),
                     ("egress", "api.github.com")]
+        if pkg == "@modelcontextprotocol/server-slack":
+            return [("reads", "slack"), ("untrusted", "slack"), ("egress", "slack.com")]
+        if pkg == "@modelcontextprotocol/server-brave-search":
+            return [("untrusted", "web")]
+        if pkg == "@modelcontextprotocol/server-puppeteer":
+            return WEB
+        if pkg == "@modelcontextprotocol/server-gdrive":
+            return [("reads", "gdrive")]
         if pkg == "@modelcontextprotocol/server-postgres" and rest:
             return [("reads", rest[0])]
         if pkg == "mcp-server-sqlite" and "--db-path" in rest:

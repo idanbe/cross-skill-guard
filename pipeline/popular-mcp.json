@@ -1,0 +1,127 @@
+{
+  "x-crosskill-note": "installs are rough estimates for ranking, not measured counts",
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "~/Documents"
+      ],
+      "x-crosskill": {
+        "installs": 90000,
+        "url": "https://github.com/modelcontextprotocol/servers/tree/main/src/filesystem"
+      }
+    },
+    "fetch": {
+      "command": "uvx",
+      "args": [
+        "mcp-server-fetch"
+      ],
+      "x-crosskill": {
+        "installs": 60000,
+        "url": "https://github.com/modelcontextprotocol/servers/tree/main/src/fetch"
+      }
+    },
+    "playwright": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@playwright/mcp@latest"
+      ],
+      "x-crosskill": {
+        "installs": 80000,
+        "url": "https://github.com/microsoft/playwright-mcp"
+      }
+    },
+    "github": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-github"
+      ],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "<token>"
+      },
+      "x-crosskill": {
+        "installs": 70000,
+        "url": "https://github.com/modelcontextprotocol/servers/tree/main/src/github"
+      }
+    },
+    "postgres": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-postgres",
+        "postgresql://localhost/db"
+      ],
+      "x-crosskill": {
+        "installs": 30000,
+        "url": "https://github.com/modelcontextprotocol/servers/tree/main/src/postgres"
+      }
+    },
+    "sqlite": {
+      "command": "uvx",
+      "args": [
+        "mcp-server-sqlite",
+        "--db-path",
+        "~/test.db"
+      ],
+      "x-crosskill": {
+        "installs": 20000,
+        "url": "https://github.com/modelcontextprotocol/servers/tree/main/src/sqlite"
+      }
+    },
+    "slack": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-slack"
+      ],
+      "env": {
+        "SLACK_BOT_TOKEN": "<token>",
+        "SLACK_TEAM_ID": "<team>"
+      },
+      "x-crosskill": {
+        "installs": 25000,
+        "url": "https://github.com/modelcontextprotocol/servers/tree/main/src/slack"
+      }
+    },
+    "brave-search": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-brave-search"
+      ],
+      "env": {
+        "BRAVE_API_KEY": "<key>"
+      },
+      "x-crosskill": {
+        "installs": 40000,
+        "url": "https://github.com/modelcontextprotocol/servers/tree/main/src/brave-search"
+      }
+    },
+    "puppeteer": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-puppeteer"
+      ],
+      "x-crosskill": {
+        "installs": 35000,
+        "url": "https://github.com/modelcontextprotocol/servers/tree/main/src/puppeteer"
+      }
+    },
+    "gdrive": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-gdrive"
+      ],
+      "x-crosskill": {
+        "installs": 20000,
+        "url": "https://github.com/modelcontextprotocol/servers/tree/main/src/gdrive"
+      }
+    }
+  }
+}
