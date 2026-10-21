@@ -22,21 +22,36 @@ def _read(path: Path) -> list[dict] | None:
     return data if isinstance(data, list) else None
 
 
+RETRY_AFTER_FAILURE_S = 3600  # an offline or firewalled machine waits on the fetch once an hour
+
+
 def load(url: str = FEED_URL, cache: Path | None = None, max_age_s: int = 86400) -> list[dict]:
-    """Advisories from a fresh cache, else the URL, else a stale cache, else []. Never raises."""
+    """Advisories from a fresh cache, else the URL, else a stale cache, else []. Never raises.
+
+    A failed fetch leaves a stamp next to the cache; for an hour after it the URL is not tried
+    again, so scans on a machine without network do not wait for the timeout every time."""
     cache = cache or CACHE_FILE
+    stamp = cache.with_name(cache.name + ".failed")
     try:
         if cache.exists() and time.time() - cache.stat().st_mtime < max_age_s:
             fresh = _read(cache)
             if fresh is not None:
                 return fresh
-        with urllib.request.urlopen(url, timeout=5) as r:
-            text = r.read().decode()
-        data = json.loads(text)
-        if not isinstance(data, list):
-            raise TypeError("feed is not a list")
+        if stamp.exists() and time.time() - stamp.stat().st_mtime < RETRY_AFTER_FAILURE_S:
+            return _read(cache) or []
+        try:
+            with urllib.request.urlopen(url, timeout=5) as r:
+                text = r.read().decode()
+            data = json.loads(text)
+            if not isinstance(data, list):
+                raise TypeError("feed is not a list")
+        except Exception:
+            cache.parent.mkdir(parents=True, exist_ok=True)
+            stamp.touch()
+            raise
         cache.parent.mkdir(parents=True, exist_ok=True)
         cache.write_text(text)
+        stamp.unlink(missing_ok=True)
         return data
     except Exception:  # noqa: BLE001 - any failure means no advisories
         try:

@@ -48,7 +48,8 @@ def test_local_keys_include_prose_only_skills() -> None:
     assert {("skill", "runner"), ("skill", "web-summarizer")} <= keys
 
 
-def test_load_failure_is_empty(tmp_path: Path) -> None:
+def test_load_failure_is_empty(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr(known, "RETRY_AFTER_FAILURE_S", 0)  # every call tries the URL
     cache = tmp_path / "feed.json"
     assert known.load("http://127.0.0.1:9/none", cache) == []
     bad = tmp_path / "bad.json"
@@ -105,3 +106,21 @@ def test_malformed_advisories_never_break_scan(monkeypatch) -> None:
     assert out.exit_code == base.exit_code == 1
     assert out.output.startswith(base.output.rstrip("\n"))
     assert out.exception is None or isinstance(out.exception, SystemExit)
+
+
+def test_failed_fetch_is_not_retried_for_an_hour(tmp_path: Path, monkeypatch) -> None:
+    import os
+    import time
+
+    cache, calls = tmp_path / "feed.json", []
+    real = known.urllib.request.urlopen
+    monkeypatch.setattr(known.urllib.request, "urlopen", lambda *a, **k: calls.append(a) or real(*a, **k))
+    assert known.load("http://127.0.0.1:9/none", cache) == []
+    assert known.load("http://127.0.0.1:9/none", cache) == [] and len(calls) == 1
+    stamp = tmp_path / "feed.json.failed"
+    old = time.time() - known.RETRY_AFTER_FAILURE_S - 1
+    os.utime(stamp, (old, old))
+    good = tmp_path / "good.json"
+    good.write_text('[{"id": "CK-1"}]')
+    assert known.load(good.as_uri(), cache) == [{"id": "CK-1"}] and len(calls) == 2
+    assert not stamp.exists()
