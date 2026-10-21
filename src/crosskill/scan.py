@@ -95,10 +95,14 @@ def to_text(findings: list[dict]) -> str:
         return "no toxic flows found"
     out = [f"{len(findings)} toxic flow(s)"]
     for f in findings:
-        out += ["", f"{f['rule']}: {summary(f)}"]
+        out += ["", f"{'[' + f['action'] + '] ' if 'action' in f else ''}{f['rule']}: {summary(f)}"]
+        out += [f"  policy: {f['reason']}"] if "action" in f else []
         out += [f"  {c['file']}:{c['line']}  {c['fact']}{' [llm]' * (c['extractor'] == 'llm')}"
                 f"\n      {c['quote']}" for c in f["chain"]]
     return "\n".join(out)
+
+
+LEVEL = {"block": "error", "warn": "warning", "ignore": "none"}
 
 
 def to_sarif(findings: list[dict]) -> str:
@@ -107,7 +111,7 @@ def to_sarif(findings: list[dict]) -> str:
                                      "region": {"startLine": c["line"]}}}
 
     results = [{
-        "ruleId": f["rule"], "level": "error", "message": {"text": summary(f)},
+        "ruleId": f["rule"], "level": LEVEL[f.get("action", "block")], "message": {"text": summary(f)},
         "locations": [loc(f["chain"][0])],
         "relatedLocations": [loc(c) | {"id": i, "message": {"text": c["fact"]}}
                              for i, c in enumerate(f["chain"])],

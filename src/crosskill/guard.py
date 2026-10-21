@@ -108,9 +108,13 @@ def properties(findings: list[dict]) -> list[dict]:
     return props
 
 
-def init(root: Path, model: str | None = None) -> dict:
-    """Scan the install and write its guard file. Returns what was written."""
+def init(root: Path, model: str | None = None, policy: Path | None = None,
+         data: Path | None = None) -> dict:
+    """Scan the install and write its guard file. Returns what was written.
+
+    With a policy, only the findings it blocks become properties."""
     from crosskill.extract import SECRET_FILES, extract
+    from crosskill.policy import decide
     from crosskill.scan import scan
 
     mcp: dict[str, list] = {}
@@ -118,7 +122,8 @@ def init(root: Path, model: str | None = None) -> dict:
         if g.rule == f"mcp__{g.comp}" and not g.denied:
             mcp.setdefault(g.comp, []).append([g.kind.replace("reads", "read"), g.arg])
     guard = {"hash": inputs(root), "automata": automata(), "mcp": mcp, "secrets": SECRET_FILES,
-             "properties": properties(scan(root, model))}
+             "properties": properties([f for f in decide(scan(root, model), policy, data, root.name)
+                                       if f["action"] == "block"])}
     (root / GUARD).parent.mkdir(exist_ok=True)
     (root / GUARD).write_text(json.dumps(guard, indent=1, ensure_ascii=False))
     return guard

@@ -22,7 +22,8 @@ automata, hooks, plugin) works and blocks the demo flow in real Claude Code, ~25
 Instead of the plan's CONNECT proxy, an armed egress property turns the network off for later
 Bash commands (proxy env vars to a closed port, via CLAUDE_ENV_FILE): no install, same reach as a
 proxy (proxy-aware tools only; Node before 22.21 ignores it). Not done yet: a week of own use with
-no false blocks.
+no false blocks. Stage 4 done: `--policy` (Rego, local `opa eval`) decides block/warn/ignore per
+finding; strict and permissive examples in `policies/`, `opa test` runs in CI.
 
 Langfuse is the local Docker stack from the triage-guard project (http://localhost:3000, project
 `cross-skill-guard`); `.env` holds its keys and is gitignored.
@@ -43,6 +44,8 @@ crosskill scan --no-llm --sarif corpus/toxic/020-two-findings  # static only, SA
 crosskill eval --push-only   # upload labels (dataset) and prompt.md to Langfuse
 crosskill eval --model M     # run the extractor on the dataset, scores per prompt version
 crosskill guard init --no-llm PATH   # write PATH/.claude/crosskill-guard.json (properties + automata)
+crosskill scan --no-llm --policy policies/strict/policy.rego --data policies/data.json PATH
+opa test policies/strict     # each policy in its own dir: both use `package crosskill`
 claude --plugin-dir plugin  # load the guard hooks (they run `crosskill-guard`, which must be on PATH)
 ```
 
@@ -81,6 +84,10 @@ LTL runtime hooks and a LangGraph daily feed on top of these findings.
   connections to the user (`systemMessage`) and to Claude (`additionalContext`). Rewriting the
   command with `updatedInput` doesn't work: Claude Code re-checks permissions on the new command.
   `plugin/` is the Claude Code plugin that wires the hooks.
+- `src/crosskill/policy.py`: `decide()` adds `id`, `severity`, `project` to findings, runs
+  `opa eval` on `data.crosskill.decisions` and requires exactly one valid decision per finding
+  (a missing or conflicting one is an error, never a silent pass). Exceptions are in the data
+  file (`policies/data.json`). Without a policy every finding blocks.
 - `corpus/`: what every stage is measured against.
   - `toxic/NNN-name/` and `clean/NNN-name/`: each is one install with `skills/<name>/SKILL.md`,
     an optional `.mcp.json` and `settings.json`, and an `expected.json`.

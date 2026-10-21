@@ -7,7 +7,7 @@ A single skill can look harmless on its own. One reads `.env`; another posts to 
 Installed together, they form a path from your secrets to the internet. crosskill finds those
 paths (toxic flows) and explains each one with file:line evidence.
 
-Status: stages 1-2 done, stage 3 (runtime guard) working, in trial use. See
+Status: stages 1-2 done, stage 3 (runtime guard) in trial use, stage 4 (policy) done. See
 [docs/facts.md](docs/facts.md) for the fact schema and [corpus/](corpus/) for the test installs.
 
 ## Install
@@ -47,6 +47,37 @@ secret_exfiltration: secret ~/.aws/credentials can reach * via cost-report → u
       allowed-tools: Bash(curl:*)
 ```
 
+## Decide what to do with each finding
+
+A Rego policy decides, for each finding, whether it blocks, warns or is ignored, always with a
+reason. It runs in the local [OPA](https://www.openpolicyagent.org) binary, with no server.
+
+```
+crosskill scan --policy policies/strict/policy.rego --data policies/data.json path/to/project
+crosskill scan --policy policies/permissive/policy.rego path/to/project
+```
+
+```
+[ignore] lethal_trifecta: untrusted web input, private /tmp/claude-1000/... via ...
+  policy: Claude Code's own scratch directory
+[block] secret_exfiltration: secret ~/** can reach * via Read(//home/u/**) → Bash(curl *)
+  policy: a secret can reach any host
+[warn] secret_exfiltration: secret ~/** can reach langfuse.com via ...
+  policy: secret_exfiltration to a named host or of non-secret data: review it
+```
+
+| Policy | Blocks | Warns |
+|---|---|---|
+| `policies/strict` | every finding | nothing |
+| `policies/permissive` | untrusted input → code execution, a secret → any host | the rest |
+
+Exceptions live in a data file: each entry matches on any finding field (`rule`, `sink`,
+`private_data`, ... as globs) or on a `component` in the flow's path, and its `reason` is reported
+with the decision. See `policies/data.json`. The scan exits 1 only when a finding blocks, SARIF
+levels follow the decision, and `crosskill guard init --policy ...` turns only blocked findings
+into runtime properties. Without `--policy`, every finding blocks. Test a policy with
+`opa test policies/strict`.
+
 ## Guard Claude Code at runtime
 
 ```
@@ -79,7 +110,8 @@ after a secret read. For a hard network boundary, also turn on Claude Code's
 ## Develop
 
 ```
-pytest -q                                      # corpus checks, scans, guard tests; no network
+pytest -q                                      # corpus, scan, guard and policy tests; no network
+opa test policies/strict && opa test policies/permissive
 ruff check .
 crosskill eval --push-only                     # upload labels and prompt to Langfuse
 crosskill eval --model deepseek/deepseek-v4.1-flash   # score the LLM extractor per prompt version

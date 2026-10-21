@@ -1,0 +1,6 @@
+{
+  "exceptions": [
+    {"rule": "lethal_trifecta", "private_data": "/tmp/claude-*", "reason": "Claude Code's own scratch directory"},
+    {"component": "gh-status", "sink": "api.github.com", "reason": "gh-status may call the GitHub API"}
+  ]
+}
