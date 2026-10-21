@@ -1,6 +1,8 @@
 import io
 import zipfile
 
+import pytest
+
 from crosskill import sources
 
 
@@ -116,3 +118,34 @@ def test_truncated_listing_is_reported():
     pages[2]["items"].append(item("a", "old", 0))
     sources.updated_since(0, 50, get=fake_get(pages), max_pages=3, notes=notes)
     assert notes == []
+
+
+def test_download_caps_size_and_members(tmp_path, monkeypatch):
+    s = sources.Skill("a", "x", "1.0.0", 1, 1, "u")
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+        z.writestr("SKILL.md", "hi")
+        z.writestr("blob.bin", b"\0" * (sources.MAX_ZIP_BYTES + 1))
+    big = buf.getvalue()
+    assert len(big) < 1_000_000  # small download, over 20 MB when extracted
+    with pytest.raises(sources.TooLarge, match="uncompressed"):
+        sources.download(s, tmp_path, get_bytes=lambda url: big)
+    assert not (tmp_path / "a--x").exists()
+    many = make_zip({f"f{i}.md": "x" for i in range(sources.MAX_ZIP_MEMBERS + 1)})
+    with pytest.raises(sources.TooLarge, match="members"):
+        sources.download(s, tmp_path, get_bytes=lambda url: many)
+    # bytes written are counted too (a member yielding more than it declares), and the
+    # partial extraction is removed so it is never reused
+    monkeypatch.setattr(sources, "MAX_ZIP_BYTES", 100)
+    small = make_zip({"SKILL.md": "x", "b.md": "y"})
+    monkeypatch.setattr(zipfile.ZipFile, "open", lambda self, m: io.BytesIO(b"z" * 60))
+    with pytest.raises(sources.TooLarge, match="written"):
+        sources.download(s, tmp_path, get_bytes=lambda url: small)
+    assert not (tmp_path / "a--x").exists()
+
+
+def test_oversized_skill_moves_the_cursor():
+    from crosskill import daily
+
+    assert not daily.transient(sources.TooLarge("x"))
+    assert not daily.transient(zipfile.BadZipFile("x"))

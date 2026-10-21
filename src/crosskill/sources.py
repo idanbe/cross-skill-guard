@@ -12,6 +12,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 API = "https://clawhub.ai/api/v1"
+MAX_ZIP_BYTES = 20 * 1024 * 1024  # uncompressed, all members together
+MAX_ZIP_MEMBERS = 2000
 
 
 @dataclass
@@ -117,21 +119,43 @@ def popular(n: int = 200, get=http_json, max_pages: int = 100,
     return out
 
 
+class TooLarge(ValueError):
+    """A skill ZIP over the size or member cap: a deterministic failure for that skill."""
+
+
 def download(skill: Skill, dest: Path, get_bytes=http_bytes) -> Path:
-    """Extract the skill ZIP into dest/<dirname>, skipping members that leave it and symlinks."""
+    """Extract the skill ZIP into dest/<dirname>, skipping members that leave it and symlinks.
+
+    At most MAX_ZIP_MEMBERS members and MAX_ZIP_BYTES uncompressed (declared sizes checked first,
+    bytes written counted too); over either cap, nothing is kept and TooLarge is raised."""
     q = urllib.parse.urlencode({"slug": skill.slug, "owner": skill.owner,
                                 "version": skill.version})
     data = get_bytes(f"{API}/download?{q}")
     target = (dest / skill.dirname).resolve()
-    target.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(io.BytesIO(data)) as z:
-        for m in z.infolist():
-            if m.is_dir() or (m.external_attr >> 16) & 0o170000 == 0o120000:
-                continue
-            path = (target / m.filename).resolve()
-            if not path.is_relative_to(target) or path == target:
-                continue
-            path.parent.mkdir(parents=True, exist_ok=True)
-            with z.open(m) as src, open(path, "wb") as out:
-                shutil.copyfileobj(src, out)
+        members = z.infolist()
+        if len(members) > MAX_ZIP_MEMBERS:
+            raise TooLarge(f"{skill.id}: {len(members)} ZIP members (cap {MAX_ZIP_MEMBERS})")
+        declared = sum(m.file_size for m in members)
+        if declared > MAX_ZIP_BYTES:
+            raise TooLarge(f"{skill.id}: {declared} bytes uncompressed (cap {MAX_ZIP_BYTES})")
+        target.mkdir(parents=True, exist_ok=True)
+        try:
+            written = 0
+            for m in members:
+                if m.is_dir() or (m.external_attr >> 16) & 0o170000 == 0o120000:
+                    continue
+                path = (target / m.filename).resolve()
+                if not path.is_relative_to(target) or path == target:
+                    continue
+                path.parent.mkdir(parents=True, exist_ok=True)
+                with z.open(m) as src, open(path, "wb") as out:
+                    while chunk := src.read(65536):
+                        written += len(chunk)
+                        if written > MAX_ZIP_BYTES:
+                            raise TooLarge(f"{skill.id}: over {MAX_ZIP_BYTES} bytes written")
+                        out.write(chunk)
+        except BaseException:
+            shutil.rmtree(target, ignore_errors=True)  # never leave a partial skill for reuse
+            raise
     return target
