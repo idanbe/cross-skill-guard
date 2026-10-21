@@ -7,7 +7,7 @@ import urllib.request
 from pathlib import Path
 from urllib.parse import urlparse
 
-from crosskill.extract import Grant
+from crosskill.extract import frontmatter
 from crosskill.llm import CACHE
 
 FEED_URL = "https://raw.githubusercontent.com/idanbe/cross-skill-guard/main/feed/advisories.json"
@@ -45,8 +45,17 @@ def load(url: str = FEED_URL, cache: Path | None = None, max_age_s: int = 86400)
             return []
 
 
-def local_keys(root: Path, grants: list[Grant]) -> set[tuple]:
-    keys = {("skill", g.comp) for g in grants if g.file.startswith(("skills/", ".claude/skills/"))}
+def local_keys(root: Path) -> set[tuple]:
+    """Match keys for an install: every installed skill (frontmatter name, else directory name,
+    as the scan names components), whatever it grants, and each MCP server's package or host."""
+    keys = set()
+    for skill_md in [*Path(root).glob("skills/*/SKILL.md"),
+                     *Path(root).glob(".claude/skills/*/SKILL.md")]:
+        try:
+            name = frontmatter(skill_md.read_text(errors="replace")).get("name")
+        except OSError:
+            name = None
+        keys.add(("skill", str(name or skill_md.parent.name)))
     try:
         servers = json.loads((Path(root) / ".mcp.json").read_text()).get("mcpServers", {})
         for s in servers.values():

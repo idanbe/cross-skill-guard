@@ -49,15 +49,17 @@ def version() -> None:
     typer.echo(__version__)
 
 
-def possible_matches(path: Path, model: str | None) -> list[str]:
+ADVISORY_URL = "https://github.com/idanbe/cross-skill-guard/blob/main/feed/{}.md"
+
+
+def possible_matches(path: Path) -> list[str]:
     from crosskill import known
-    from crosskill.extract import extract
 
     try:
         advisories = known.load(known.FEED_URL)
-        found = known.matches(advisories, known.local_keys(path, extract(path, model))) if advisories else []
-        return [f"possible match: {a.get('id', '?')} {a.get('title', '')} "
-                f"{(a['components'][0].get('url') or '')}".rstrip() for a in found]
+        found = known.matches(advisories, known.local_keys(path)) if advisories else []
+        return [(f"possible match: {a.get('id', '?')} {a.get('title', '')} "
+                 + (ADVISORY_URL.format(a["id"]) if a.get("id") else "")).rstrip() for a in found]
     except Exception:  # noqa: BLE001 - advisories are best effort
         return []
 
@@ -79,7 +81,7 @@ def scan(
         findings = decide(findings, policy, data, path.resolve().name)
     typer.echo(to_sarif(findings) if sarif else to_text(findings))
     if not sarif and not offline and os.environ.get("CROSSKILL_OFFLINE") != "1":
-        for line in possible_matches(path, None if no_llm else model):
+        for line in possible_matches(path):
             typer.echo(line)
     raise typer.Exit(code=1 if any(f.get("action", "block") == "block" for f in findings) else 0)
 

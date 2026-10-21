@@ -34,9 +34,18 @@ def test_local_keys(tmp_path: Path) -> None:
     (tmp_path / ".mcp.json").write_text(json.dumps({"mcpServers": {
         "a": {"command": "npx", "args": ["-y", "pkg-x@1.2"]},
         "b": {"url": "https://h.example/mcp"}}}))
-    g = [type("G", (), {"comp": "sk", "file": "skills/sk/SKILL.md"})(),
-         type("G", (), {"comp": "srv", "file": ".mcp.json"})()]
-    assert known.local_keys(tmp_path, g) == {("skill", "sk"), ("mcp", "pkg-x"), ("mcp", "h.example")}
+    (tmp_path / "skills" / "sk").mkdir(parents=True)
+    (tmp_path / "skills" / "sk" / "SKILL.md").write_text("---\nname: named\n---\nhi\n")
+    (tmp_path / ".claude" / "skills" / "plain").mkdir(parents=True)
+    (tmp_path / ".claude" / "skills" / "plain" / "SKILL.md").write_text("no frontmatter\n")
+    assert known.local_keys(tmp_path) == {("skill", "named"), ("skill", "plain"),
+                                          ("mcp", "pkg-x"), ("mcp", "h.example")}
+
+
+def test_local_keys_include_prose_only_skills() -> None:
+    """--no-llm finds no grants in these skills (their flows are in prose); they still match."""
+    keys = known.local_keys(Path("corpus/toxic/002-untrusted-to-shell"))
+    assert {("skill", "runner"), ("skill", "web-summarizer")} <= keys
 
 
 def test_load_failure_is_empty(tmp_path: Path) -> None:
@@ -72,11 +81,12 @@ def test_scan_prints_possible_match(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setenv("CROSSKILL_OFFLINE", "0")
     # any skill name: use whatever the install has
     g = known.local_keys
-    monkeypatch.setattr(known, "local_keys", lambda r, gr: g(r, gr) | {("skill", "x")})
+    monkeypatch.setattr(known, "local_keys", lambda r: g(r) | {("skill", "x")})
     out = runner.invoke(app, ["scan", "--no-llm", "--offline", "corpus/toxic/020-two-findings"])
     assert "possible match" not in out.output
     out = runner.invoke(app, ["scan", "--no-llm", "corpus/toxic/020-two-findings"])
-    assert "possible match: CK-2026-0001 Bad combo u" in out.output
+    assert ("possible match: CK-2026-0001 Bad combo "
+            "https://github.com/idanbe/cross-skill-guard/blob/main/feed/CK-2026-0001.md") in out.output
     assert out.exit_code == 1 and not feed.exists()
 
 
@@ -90,7 +100,7 @@ def test_malformed_advisories_never_break_scan(monkeypatch) -> None:
     monkeypatch.setattr(known, "load", lambda *a, **k: feed)
     monkeypatch.setenv("CROSSKILL_OFFLINE", "0")
     g = known.local_keys
-    monkeypatch.setattr(known, "local_keys", lambda r, gr: g(r, gr) | {("skill", "x")})
+    monkeypatch.setattr(known, "local_keys", lambda r: g(r) | {("skill", "x")})
     out = runner.invoke(app, args)
     assert out.exit_code == base.exit_code == 1
     assert out.output.startswith(base.output.rstrip("\n"))
