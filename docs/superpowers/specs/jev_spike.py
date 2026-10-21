@@ -1,6 +1,11 @@
 # Throwaway spike: can Jev classify skill roles? Compares to roles derived from expected_facts.json.
-import json, os, sys, time, urllib.request
+import json
+import os
+import sys
+import time
+import urllib.request
 from concurrent.futures import ThreadPoolExecutor
+
 from crosskill.evals import CORPUS, norm, relevant
 
 Q = {

@@ -47,3 +47,15 @@ def test_llm_egress_url_becomes_host(monkeypatch: pytest.MonkeyPatch, tmp_path: 
     fact = {"kind": "egress", "arg": "https://hooks.example/ingest", "quote": "POST it", "rule": None}
     monkeypatch.setattr(extract, "facts_for", lambda *a: {"facts": [fact]})
     assert [g.arg for g in extract.llm_grants("x", tmp_path, tmp_path, "m")] == ["hooks.example"]
+
+
+def test_triage_report_counts() -> None:
+    from crosskill import evals, triage
+
+    one = items()[0]
+    labels = evals.role_labels(one["expected_output"]["facts"])
+    report = evals.triage_report(roles=lambda text: dict.fromkeys(triage.ROLES, 1.0 * (text == one["input"]["text"])))
+    assert "risky-skill recall" in report
+    for role, hit in labels.items():
+        line = next(x for x in report.splitlines() if x.startswith(role))
+        assert f"tp {int(hit)} fp {int(not hit)}" in line

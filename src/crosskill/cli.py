@@ -69,9 +69,15 @@ def scan(
 def eval_(
     model: Model = DEFAULT_MODEL,
     push_only: Annotated[bool, typer.Option("--push-only", help="Only upload dataset and prompt")] = False,
+    triage: Annotated[bool, typer.Option("--triage", help="Score Jev role triage instead (no Langfuse)")] = False,
+    threshold: Annotated[float, typer.Option(help="Triage gate threshold")] = 0.2,
 ) -> None:
     """Score the LLM extractor on the corpus labels in Langfuse."""
-    from crosskill.evals import run
+    from crosskill.evals import run, triage_report
+
+    if triage:
+        typer.echo(triage_report(threshold))
+        return
 
     typer.echo(run(model, push_only))
 
