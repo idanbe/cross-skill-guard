@@ -53,18 +53,27 @@ jobs:
           CROSSKILL_ISSUES_TOKEN: ${{ secrets.CROSSKILL_ISSUES_TOKEN }}
           XDG_CACHE_HOME: ${{ github.workspace }}/state/cache
         run: crosskill daily --state state --feed feed
+      # Feed first: if its push fails, state stays unpushed and the next run retries.
+      # Run even when the daily step failed, so partial progress is kept.
+      - name: Commit feed to main
+        id: feed
+        if: ${{ !cancelled() }}
+        run: |
+          git add feed
+          if git diff --cached --quiet; then echo "feed unchanged"; exit 0; fi
+          git commit -m "chore: daily feed"
+          for i in 1 2 3; do
+            git pull --rebase origin main
+            git push origin HEAD:main && exit 0
+            sleep 5
+          done
+          exit 1
       - name: Commit state to data
+        if: ${{ !cancelled() && steps.feed.outcome != 'failure' }}
         working-directory: state
         run: |
           git add -A
           if git diff --cached --quiet; then echo "state unchanged"; else
             git commit -m "chore: daily feed state"
             git push origin HEAD:data
-          fi
-      - name: Commit feed to main
-        run: |
-          git add feed
-          if git diff --cached --quiet; then echo "feed unchanged"; else
-            git commit -m "chore: daily feed"
-            git push origin HEAD:main
           fi
