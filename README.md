@@ -12,9 +12,29 @@ Status: stages 1-2 done, stage 3 (runtime guard) in trial use, stage 4 (policy) 
 
 ## Install
 
+Needs Python 3.12 or later.
+
 ```
-pip install -e ".[dev]"
-cp .env.example .env    # OpenRouter key for the LLM extractor; Langfuse keys for tracing and evals
+pipx install git+https://github.com/idanbe/cross-skill-guard
+export OPENROUTER_API_KEY=...   # for the LLM extractor; skip it and pass --no-llm to stay offline
+```
+
+For the runtime guard, also install the Claude Code plugin. Inside Claude Code:
+
+```
+/plugin install crosskill-guard --marketplace idanbe/cross-skill-guard
+```
+
+On Claude Code before 2.1.275, run `/plugin marketplace add idanbe/cross-skill-guard` and then
+`/plugin install crosskill-guard@crosskill`. The plugin's hooks call the `crosskill-guard` command
+that pipx installed; if it is missing, each session starts with a warning instead.
+
+Quick start:
+
+```
+cd your-project
+crosskill scan --no-llm .           # what toxic flows does this setup allow?
+crosskill guard init --no-llm .     # turn them into runtime properties for the plugin
 ```
 
 ## Scan a project
@@ -82,13 +102,15 @@ into runtime properties. Without `--policy`, every finding blocks. Test a policy
 
 ```
 crosskill guard init path/to/project      # add --no-llm for a static-only scan
-claude --plugin-dir path/to/cross-skill-guard/plugin
 ```
+
+Then start Claude Code in that project with the plugin installed (see Install), or, from a clone,
+with `claude --plugin-dir path/to/cross-skill-guard/plugin`.
 
 `init` turns each finding into an LTL safety property and saves it, with its automaton, to
 `.claude/crosskill-guard.json`. For example, `G(read_secret(.env) → G ¬egress(*))` means "once
 `.env` has been read, nothing is sent out for the rest of the session". The plugin's hooks then
-follow every tool call (`crosskill-guard` must be on the `PATH` Claude Code runs with):
+follow every tool call:
 
 - A tool call that would break a property is denied before it runs. The reason names the rule,
   the earlier call that armed it, and the file:line evidence from the scan.
@@ -110,6 +132,9 @@ after a secret read. For a hard network boundary, also turn on Claude Code's
 ## Develop
 
 ```
+git clone https://github.com/idanbe/cross-skill-guard && cd cross-skill-guard
+pip install -e ".[dev]"
+cp .env.example .env    # OpenRouter key; Langfuse keys for tracing and evals
 pytest -q                                      # corpus, scan, guard and policy tests; no network
 opa test policies/strict && opa test policies/permissive
 ruff check .

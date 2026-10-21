@@ -1,5 +1,10 @@
 {
   "name": "crosskill-guard",
   "description": "Blocks the toxic flows that `crosskill guard init` found, at runtime",
-  "version": "0.0.1"
+  "version": "0.1.0",
+  "author": {
+    "name": "idanbe"
+  },
+  "license": "MIT",
+  "repository": "https://github.com/idanbe/cross-skill-guard"
 }

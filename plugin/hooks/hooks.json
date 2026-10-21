@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "crosskill-guard"
+            "command": "command -v crosskill-guard >/dev/null && crosskill-guard || echo '{\"systemMessage\": \"crosskill guard is not active: install its CLI with pipx install git+https://github.com/idanbe/cross-skill-guard\"}'"
           }
         ]
       }

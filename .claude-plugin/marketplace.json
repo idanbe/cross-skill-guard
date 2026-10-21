@@ -1,0 +1,14 @@
+{
+  "name": "crosskill",
+  "description": "Find and block toxic flows between skills, MCP servers and permissions",
+  "owner": {
+    "name": "idanbe"
+  },
+  "plugins": [
+    {
+      "name": "crosskill-guard",
+      "source": "./plugin",
+      "description": "Blocks at runtime the toxic flows that `crosskill guard init` found"
+    }
+  ]
+}

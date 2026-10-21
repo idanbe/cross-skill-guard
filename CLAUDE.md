@@ -83,7 +83,9 @@ LTL runtime hooks and a LangGraph daily feed on top of these findings.
   flag when a property is one egress from breaking, and PostToolUse(Failure) reports refused
   connections to the user (`systemMessage`) and to Claude (`additionalContext`). Rewriting the
   command with `updatedInput` doesn't work: Claude Code re-checks permissions on the new command.
-  `plugin/` is the Claude Code plugin that wires the hooks.
+  `plugin/` is the Claude Code plugin that wires the hooks; `.claude-plugin/marketplace.json` makes
+  the repo a marketplace (`/plugin install crosskill-guard --marketplace idanbe/cross-skill-guard`).
+  `claude plugin validate .` checks both. Users install the CLI with `pipx install git+...`.
 - `src/crosskill/policy.py`: `decide()` adds `id`, `severity`, `project` to findings, runs
   `opa eval` on `data.crosskill.decisions` and requires exactly one valid decision per finding
   (a missing or conflicting one is an error, never a silent pass). Exceptions are in the data
