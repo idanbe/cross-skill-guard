@@ -74,6 +74,15 @@ def complete(system: str, user: str, model: str, prompt=None) -> dict:
             "cost": getattr(r.usage, "cost", None), "latency": time.perf_counter() - start}
 
 
+def deterministic(e: Exception) -> bool:
+    """A failure the same request would hit again: token cap reached or unparseable output."""
+    from openai import ContentFilterFinishReasonError, LengthFinishReasonError
+    from pydantic import ValidationError
+
+    return isinstance(e, (LengthFinishReasonError, ContentFilterFinishReasonError, ValidationError,
+                          json.JSONDecodeError))
+
+
 def facts_for(name: str, text: str, model: str, prompt=None) -> dict:
     """Facts for one file, from the cache when this model and prompt have seen the text."""
     system = prompt.prompt if prompt else PROMPT
@@ -87,12 +96,20 @@ def facts_for(name: str, text: str, model: str, prompt=None) -> dict:
         if allow is not None and not allow(in_flight):
             raise OverBudget("LLM budget reached")
         in_flight += 1
+    start = time.perf_counter()
     try:
         out = complete(system, user, model, prompt)
+        charge(out.get("cost"))
+    except Exception as e:
+        if not deterministic(e):
+            raise  # timeouts, connection errors, 429/5xx: try again on a later run
+        # complete() already charged the failed call; cache it so the text is paid for once.
+        usage = getattr(getattr(e, "completion", None), "usage", None)
+        out = {"facts": [], "cost": getattr(usage, "cost", None),
+               "latency": time.perf_counter() - start, "error": f"{type(e).__name__}: {e}"[:300]}
     finally:
         with SPEND_LOCK:
             in_flight -= 1
-    charge(out.get("cost"))
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(out))
     return out

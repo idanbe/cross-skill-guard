@@ -104,3 +104,36 @@ def test_spend_gate_blocks_uncached_calls(monkeypatch: pytest.MonkeyPatch, tmp_p
         llm.facts_for("SKILL.md", "two", "m")
     llm.facts_for("SKILL.md", "one", "m")  # cached: no gate, no call
     assert len(calls) == 1 and asked == [0, 0] and llm.in_flight == 0
+
+
+def test_deterministic_failures_are_cached(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    from types import SimpleNamespace
+
+    import httpx
+    from openai import APITimeoutError, LengthFinishReasonError
+
+    monkeypatch.setattr(llm, "CACHE", tmp_path)
+    monkeypatch.setattr(llm, "spent_usd", 0.0)
+    monkeypatch.setattr(llm, "max_call_usd", 0.0)
+    calls = []
+
+    def length(*a):  # as complete() does: charge the failed call, then raise
+        calls.append(a)
+        llm.charge(0.006)
+        raise LengthFinishReasonError(completion=SimpleNamespace(usage=SimpleNamespace(cost=0.006)))
+
+    monkeypatch.setattr(llm, "complete", length)
+    first = llm.facts_for("SKILL.md", "loops forever", "m")
+    assert first["facts"] == [] and first["error"].startswith("LengthFinishReasonError")
+    assert llm.spent_usd == pytest.approx(0.006) and len(list(tmp_path.glob("*.json"))) == 1
+    second = llm.facts_for("SKILL.md", "loops forever", "m")
+    assert second["cached"] is True and second["error"] and len(calls) == 1
+    assert llm.spent_usd == pytest.approx(0.006)
+
+    def timeout(*a):
+        raise APITimeoutError(request=httpx.Request("POST", "https://openrouter.ai"))
+
+    monkeypatch.setattr(llm, "complete", timeout)
+    with pytest.raises(APITimeoutError):
+        llm.facts_for("SKILL.md", "slow", "m")
+    assert len(list(tmp_path.glob("*.json"))) == 1 and llm.in_flight == 0
