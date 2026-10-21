@@ -7,9 +7,6 @@ A single skill can look harmless on its own. One reads `.env`; another posts to 
 Installed together, they form a path from your secrets to the internet. crosskill finds those
 paths (toxic flows) and explains each one with file:line evidence.
 
-Status: stages 1-2 done, stage 3 (runtime guard) in trial use, stage 4 (policy) done. See
-[docs/facts.md](docs/facts.md) for the fact schema and [corpus/](corpus/) for the test installs.
-
 ## Install
 
 Needs Python 3.12 or later.
