@@ -367,11 +367,10 @@ def test_jev_http_error_on_new_skill(tmp_path, offline, monkeypatch, code, moves
 
 
 def test_transient_classification():
-    import socket
     import urllib.error
 
     assert daily.transient(urllib.error.URLError("down"))
-    assert daily.transient(socket.timeout()) and daily.transient(ConnectionResetError())
+    assert daily.transient(TimeoutError()) and daily.transient(ConnectionResetError())
     assert daily.transient(urllib.error.HTTPError("u", 502, "bad", {}, None))
     assert not daily.transient(urllib.error.HTTPError("u", 403, "no", {}, None))
     assert not daily.transient(ValueError("bad zip"))
