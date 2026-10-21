@@ -49,6 +49,17 @@ def version() -> None:
     typer.echo(__version__)
 
 
+def possible_matches(path: Path, model: str | None) -> list[dict]:
+    from crosskill import known
+    from crosskill.extract import extract
+
+    try:
+        advisories = known.load(known.FEED_URL)
+        return known.matches(advisories, known.local_keys(path, extract(path, model))) if advisories else []
+    except Exception:  # noqa: BLE001 - advisories are best effort
+        return []
+
+
 @app.command()
 def scan(
     path: Annotated[Path, typer.Argument(help="Installation directory to scan")] = Path("."),
@@ -57,6 +68,7 @@ def scan(
     model: Model = DEFAULT_MODEL,
     policy: Policy = None,
     data: Data = None,
+    offline: Annotated[bool, typer.Option("--offline", help="Skip the published-advisories lookup")] = False,
 ) -> None:
     """Scan an installation for toxic flows. Exits 1 when any finding blocks."""
     need_key(no_llm)
@@ -64,6 +76,9 @@ def scan(
     if policy:
         findings = decide(findings, policy, data, path.resolve().name)
     typer.echo(to_sarif(findings) if sarif else to_text(findings))
+    if not sarif and not offline and os.environ.get("CROSSKILL_OFFLINE") != "1":
+        for a in possible_matches(path, None if no_llm else model):
+            typer.echo(f"possible match: {a['id']} {a['title']} {a['components'][0]['url']}")
     raise typer.Exit(code=1 if any(f.get("action", "block") == "block" for f in findings) else 0)
 
 
