@@ -221,7 +221,7 @@ def test_jev_gates_popular_skills(tmp_path, offline):
     summary = go(tmp_path, gh, src)
     # the LLM reads cost-report (relevant static grant) and uploader, never the quiet fmt
     assert offline == {"llm": 2, "jev": 1} and len(gh.issues) == 1
-    assert "popular set: 2 downloaded, 1 passed the gate, 1 extracted by the LLM" in summary
+    assert "popular set: 2 downloaded, 2 triaged, 1 passed the gate, 1 extracted by the LLM" in summary
 
 
 def test_dry_run_leaves_state_untouched(tmp_path, monkeypatch):
@@ -238,6 +238,7 @@ def test_dry_run_leaves_state_untouched(tmp_path, monkeypatch):
         seen.append(state_dir)
         assert (state_dir / "ledger.json").read_text() == "{}"
         (state_dir / "ledger.json").write_text('{"x": 1}')
+        (state_dir / "cache" / "paid.json").write_text("{}")  # the LLM cache is shared
         (feed_dir / "README.md").parent.mkdir(parents=True, exist_ok=True)
         gh.create_issue("[candidate] t", "body", ["crosskill-candidate"])
         return "summary"
@@ -248,6 +249,7 @@ def test_dry_run_leaves_state_untouched(tmp_path, monkeypatch):
     assert r.exit_code == 0, r.output
     assert "summary" in r.output and "[candidate] t" in r.output
     assert seen[0] != state and (state / "ledger.json").read_text() == "{}" and not feed.exists()
+    assert (state / "cache" / "paid.json").exists()  # a second dry run does not pay again
 
 
 def test_pool_rolls_past_a_slow_item():
@@ -450,3 +452,25 @@ def test_deadline_stops_inside_a_skill(tmp_path, monkeypatch, offline):
     assert not gh.issues
     cursor = tmp_path / "state" / "cursor.json"
     assert not cursor.exists() or "clawhub" not in json.loads(cursor.read_text())
+
+
+def test_cut_short_warmup_still_checks_new_skills(tmp_path, monkeypatch, offline):
+    """A warm-up stopped by the budget returns the popular skills that are ready (the rest take
+    part with static facts only) instead of no popular set at all."""
+    real = llm.complete
+
+    def pricey(system, user, model, prompt=None):
+        out = real(system, user, model, prompt)
+        out["cost"] = 1.0  # the first warm-up call uses up the whole budget
+        return out
+
+    monkeypatch.setattr(llm, "complete", pricey)
+    t10 = CORPUS / "toxic/010-netrc-single-skill/skills"
+    src = Source([skill("sync-tool", T0 + 3)],
+                 [skill("cost-report", T0 + 1), skill("uploader", T0 + 2)],
+                 {"uploader": T4 / "uploader", "cost-report": T4 / "cost-report",
+                  "sync-tool": t10 / "sync-tool"})
+    summary = go(tmp_path, MemoryGitHub(), src, max_usd=0.5)
+    assert "before the budget was reached" in summary
+    assert "no popular set" not in summary
+    assert "budget reached before clawhub/acme/sync-tool" in summary

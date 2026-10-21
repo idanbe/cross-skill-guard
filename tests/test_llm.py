@@ -89,8 +89,7 @@ def test_calls_are_bounded_and_failed_calls_charged(monkeypatch: pytest.MonkeyPa
     assert seen["client"]["timeout"] == llm.TIMEOUT_S == 120
     assert seen["client"]["max_retries"] == llm.RETRIES == 2
     assert seen["call"]["max_tokens"] == llm.MAX_TOKENS
-    assert seen["call"]["extra_body"]["reasoning"] == {"max_tokens": llm.REASONING_TOKENS}
-    assert llm.REASONING_TOKENS < llm.MAX_TOKENS
+    assert seen["call"]["extra_body"]["reasoning"] == {"effort": "low"}
 
 
 def test_spend_gate_blocks_uncached_calls(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:

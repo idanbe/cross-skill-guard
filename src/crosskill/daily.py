@@ -183,6 +183,12 @@ class Budget:
         self.limit, self.step, self.deadline = self.mark + max_usd, 0.0, deadline
         self.reason = ""  # why left() last said no: "budget" or "deadline"
 
+    def why(self) -> str:
+        """What stopped the run: the deadline if it has passed, else the budget."""
+        if self.deadline is not None and time.monotonic() >= self.deadline:
+            return "deadline"
+        return self.reason or "budget"
+
     def left(self, running: int = 0) -> bool:
         if self.deadline is not None and time.monotonic() >= self.deadline:
             self.reason = "deadline"
@@ -245,7 +251,7 @@ def _popular_set(state_dir, model, budget, list_popular, fetch, errors, tmp, not
     """Popular skills, their dirs and the dirnames the LLM reads, refreshed weekly.
 
     Jev gates each skill; the gated ones are extracted in parallel within the budget (cached
-    after the first run). Returns None when the budget ran out first."""
+    after the first run). Returns None only when there is no popular listing at all."""
     path = state_dir / "popular.json"
     pop = _load(path, None)
     if pop is None or date.today() - date.fromisoformat(pop["fetched"]) >= POPULAR_MAX_AGE:
@@ -268,21 +274,19 @@ def _popular_set(state_dir, model, budget, list_popular, fetch, errors, tmp, not
             errors.append(f"popular {sk.id}: {e!r}")
     if not model:
         return {sk.dirname: sk for sk, _ in entries}, {sk.dirname: d for sk, d in entries}, set()
+    # A warm-up cut short by the budget or the deadline still returns what is ready: skills without
+    # LLM facts take part with their static facts, and the next run finishes them from the cache.
     gate, ok = _parallel(entries, lambda e: _gate(e[1], e[0].dirname, tmp), budget, errors, "triage")
-    if not ok:
-        notes.append(f"popular set: {len(entries)} downloaded, {budget.reason} reached in triage")
-        return None
-    read = [entries[i] for i, ok in sorted(gate.items()) if ok]
-    warm, ok = _parallel(read, lambda e: extract(_solo(tmp, e[0].dirname, e[1]), model), budget,
-                     errors, "extract")
-    notes.append(f"popular set: {len(entries)} downloaded, {len(read)} passed the gate, "
-                 f"{len(warm)} extracted by the LLM" + ("" if ok else f" before the {budget.reason} was reached"))
-    if not ok:
-        return None
-    failed = {read[i][0].dirname for i in range(len(read)) if i not in warm}
-    kept = [(sk, d) for i, (sk, d) in enumerate(entries) if i in gate and sk.dirname not in failed]
-    llm_set = {sk.dirname for sk, _ in read} - failed
-    return {sk.dirname: sk for sk, _ in kept}, {sk.dirname: d for sk, d in kept}, llm_set
+    read = [entries[i] for i, passed in sorted(gate.items()) if passed]
+    warm = {}
+    if ok:
+        warm, ok = _parallel(read, lambda e: extract(_solo(tmp, e[0].dirname, e[1]), model), budget,
+                             errors, "extract")
+    notes.append(f"popular set: {len(entries)} downloaded, {len(gate)} triaged, {len(read)} passed "
+                 f"the gate, {len(warm)} extracted by the LLM"
+                 + ("" if ok else f" before the {budget.why()} was reached"))
+    llm_set = {read[i][0].dirname for i in warm}
+    return {sk.dirname: sk for sk, _ in entries}, {sk.dirname: d for sk, d in entries}, llm_set
 
 
 def _check(sk, state_dir, pop, model, gh, feed_dir, g, ledger, fetch, tmp) -> list[str]:
@@ -334,7 +338,7 @@ def discover(state_dir: Path, gh, feed_dir: Path, max_usd: float, max_skills: in
         pop = _popular_set(state_dir, model, budget, list_popular, fetch, errors, Path(tmp),
                            notes)
         if pop is None:
-            errors.append("discovery stopped: no popular set (budget, deadline or listing)")
+            errors.append("discovery stopped: no popular set (the listing failed)")
             return keys
         try:
             new = list_new(cursor["clawhub"], max_skills, notes=notes)
@@ -347,14 +351,13 @@ def discover(state_dir: Path, gh, feed_dir: Path, max_usd: float, max_skills: in
                 notes.append(f"skill cap reached: {max_skills} checked")
                 break
             if not budget.left():
-                notes.append(f"{budget.reason} reached before {sk.id}; it is checked next run")
+                notes.append(f"{budget.why()} reached before {sk.id}; it is checked next run")
                 break
             stop = False
             try:
                 keys += _check(sk, state_dir, pop, model, gh, feed_dir, g, ledger, fetch, Path(tmp))
             except llm.OverBudget:
-                why = "deadline" if deadline is not None and time.monotonic() >= deadline else "budget"
-                notes.append(f"{why} reached at {sk.id}; it is checked next run")
+                notes.append(f"{budget.why()} reached at {sk.id}; it is checked next run")
                 _save(ledger_path, ledger)
                 break
             except Exception as e:  # noqa: BLE001 - deterministic: the skill counts as processed

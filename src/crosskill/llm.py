@@ -20,7 +20,11 @@ CACHE = Path(os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache") / "cros
 spent_usd = 0.0  # cost of uncached calls this process
 SPEND_LOCK = threading.Lock()  # the daily run extracts from worker threads
 # Bounds on one call: a fact list fits easily; a runaway reasoning loop (131k tokens seen) does not.
-MAX_TOKENS, REASONING_TOKENS, TIMEOUT_S = 8192, 4096, 120
+MAX_TOKENS, TIMEOUT_S = 8192, 120
+# Low reasoning effort: the provider ignores a reasoning token cap, and long skills burned all 8k
+# completion tokens on reasoning with no answer. On the corpus labels: effort low P 0.92 / R 0.92,
+# reasoning off P 0.76 / R 0.64 (2026-10-21). Part of the cache key.
+REASONING = {"effort": "low"}
 RETRIES = 2  # SDK retries on 429, 5xx and connection errors (timeouts included)
 CALL_RESERVE_USD = 0.008  # one bounded flash call: 8k completion tokens plus the prompt
 # Spend gate for runs with a cap (the daily run sets it): allow(calls_in_flight) -> bool, asked
@@ -69,7 +73,7 @@ def complete(system: str, user: str, model: str, prompt=None) -> dict:
             messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
             # Route only to providers that enforce the JSON schema; ask OpenRouter for the cost.
             extra_body={"provider": {"require_parameters": True}, "usage": {"include": True},
-                        "reasoning": {"max_tokens": REASONING_TOKENS}},
+                        "reasoning": REASONING},
         )
     except Exception as e:
         # A failed call can still be billed (e.g. LengthFinishReasonError carries the completion).
@@ -106,7 +110,8 @@ def facts_for(name: str, text: str, model: str, prompt=None) -> dict:
     """Facts for one file, from the cache when this model and prompt have seen the text."""
     system = prompt.prompt if prompt else PROMPT
     user = f"File: {name}\n\n{text}"
-    key = hashlib.sha256(f"{model}\0{system}\0{user}".encode()).hexdigest()
+    mode = json.dumps(REASONING, sort_keys=True)
+    key = hashlib.sha256(f"{model}\0{mode}\0{system}\0{user}".encode()).hexdigest()
     path = CACHE / f"{key}.json"
     if path.exists():
         return {**json.loads(path.read_text()), "cached": True}

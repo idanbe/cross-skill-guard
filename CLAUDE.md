@@ -17,7 +17,7 @@ install). Stage 2 done. Evals per prompt version (P / R, cost per corpus run):
 `deepseek/deepseek-v4.1-flash` v1 0.83 / 0.96, v2 0.96 / 0.96, $0.03; `deepseek/deepseek-v4-pro`
 v1 0.75 / 0.86, v2 0.88 / 0.88, $0.23. With v2 + flash the scan gives exactly the expected
 findings on all 77 installs (static alone flags 21/24 toxic), 0 false findings on clean. OpenRouter models that reject `temperature` (Sonnet
-5.5, GPT-5.6) fail under `require_parameters`. Jev role triage (`crosskill eval --triage`, 92 skills, $0.002): per-role P/R at 0.5 are reads 0.68/0.93, sends 1.00/0.90, untrusted 0.89/0.85, code 0.40/0.80; risky-skill recall at threshold 0.2 is 46/46. Stage 3: `crosskill guard`
+5.5, GPT-5.6) fail under `require_parameters`. The extractor now asks for low reasoning effort (`llm.REASONING`, part of the cache key): flash v2 0.92 / 0.92, $0.02; reasoning off 0.76 / 0.64; a reasoning token cap is ignored by the provider and long skills ran out of tokens. Jev role triage (`crosskill eval --triage`, 92 skills, $0.002): per-role P/R at 0.5 are reads 0.68/0.93, sends 1.00/0.90, untrusted 0.89/0.85, code 0.40/0.80; risky-skill recall at threshold 0.2 is 46/46. Stage 3: `crosskill guard`
 (templates, automata, hooks, plugin) blocks the demo flow in real Claude Code, ~25 ms per hook
 call; an armed egress property turns the network off for later Bash commands (proxy env vars to a
 closed port, via CLAUDE_ENV_FILE) instead of the plan's CONNECT proxy (proxy-aware tools only;

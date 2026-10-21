@@ -132,8 +132,8 @@ def daily_(
     max_minutes: Annotated[float, typer.Option(
         help="Wall-clock limit: no new skill starts after it (keep it under the job timeout)")] = 45,
     dry_run: Annotated[bool, typer.Option(
-        "--dry-run", help="In-memory GitHub and a copy of --state and --feed: print "
-        "candidates instead of opening issues")] = False,
+        "--dry-run", help="In-memory GitHub and a copy of --state and --feed (the LLM cache and "
+        "downloads are shared): print candidates instead of opening issues")] = False,
     model: Model = DEFAULT_MODEL,
 ) -> None:
     """Check new ClawHub skills and hold each candidate for an approve/reject label."""
@@ -145,12 +145,20 @@ def daily_(
         typer.echo(run(state, feed, GitHub.from_env(), max_usd, max_skills, model, max_minutes))
         return
     gh = MemoryGitHub()
-    with tempfile.TemporaryDirectory() as tmp:  # a dry run never writes the real state or feed
+    # A dry run never writes the real ledger, cursor, checkpoints or feed, but shares the paid
+    # LLM/Jev cache and the downloaded skills, so a second dry run does not pay again.
+    shared = ("cache", "skills")
+    with tempfile.TemporaryDirectory() as tmp:
         copies = []
         for src, name in ((state, "state"), (feed, "feed")):
             copies.append(Path(tmp) / name)
             if src.exists():
-                shutil.copytree(src, copies[-1], symlinks=True)
+                shutil.copytree(src, copies[-1], symlinks=True,
+                                ignore=shutil.ignore_patterns(*shared) if name == "state" else None)
+        copies[0].mkdir(exist_ok=True)
+        for sub in shared:
+            (state / sub).mkdir(parents=True, exist_ok=True)
+            (copies[0] / sub).symlink_to((state / sub).resolve(), target_is_directory=True)
         typer.echo(run(copies[0], copies[1], gh, max_usd, max_skills, model, max_minutes))
     for issue in gh.issues.values():
         typer.echo(f"\n=== {issue['title']}\n\n{issue['body']}")
