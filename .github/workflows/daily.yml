@@ -12,6 +12,8 @@ concurrency:
 jobs:
   daily:
     runs-on: ubuntu-latest
+    # Well above the daily run's own --max-minutes (45): discovery stops on time and the commit
+    # steps still run, so a slow day never loses state.
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
@@ -52,7 +54,7 @@ jobs:
           CROSSKILL_ISSUES_REPO: ${{ secrets.CROSSKILL_ISSUES_REPO }}
           CROSSKILL_ISSUES_TOKEN: ${{ secrets.CROSSKILL_ISSUES_TOKEN }}
           XDG_CACHE_HOME: ${{ github.workspace }}/state/cache
-        run: crosskill daily --state state --feed feed
+        run: crosskill daily --state state --feed feed --max-minutes 45
       # Feed first: if its push fails, state stays unpushed and the next run retries.
       # Run even when the daily step failed, so partial progress is kept.
       - name: Commit feed to main

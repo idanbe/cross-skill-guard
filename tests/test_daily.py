@@ -375,3 +375,38 @@ def test_transient_classification():
     assert daily.transient(urllib.error.HTTPError("u", 502, "bad", {}, None))
     assert not daily.transient(urllib.error.HTTPError("u", 403, "no", {}, None))
     assert not daily.transient(ValueError("bad zip"))
+
+
+def test_deadline_stops_like_the_budget(tmp_path, monkeypatch):
+    """R20: no skill starts after the deadline; the cursor stays at the last finished skill."""
+    from types import SimpleNamespace
+
+    clock = [0.0]
+    monkeypatch.setattr(daily, "time", SimpleNamespace(monotonic=lambda: clock[0], time=time.time))
+    src = Source([skill("cost-report", T0 + 1), skill("uploader", T0 + 2)], [],
+                 {"uploader": T4 / "uploader", "cost-report": T4 / "cost-report"})
+    real = src.download
+
+    def slow_download(sk, dest, **kw):
+        clock[0] += 46 * 60  # the first skill takes 46 minutes
+        return real(sk, dest, **kw)
+
+    src.download = slow_download
+    summary = go(tmp_path, MemoryGitHub(), src, max_minutes=45)
+    assert "deadline reached before clawhub/acme/uploader" in summary
+    assert json.loads((tmp_path / "state" / "cursor.json").read_text()) == {"clawhub": T0 + 1}
+    assert src.downloads == ["cost-report"]
+
+
+def test_cli_passes_max_minutes(tmp_path, monkeypatch):
+    from typer.testing import CliRunner
+
+    from crosskill.cli import app
+
+    seen = []
+    monkeypatch.setattr(daily, "run", lambda *a: seen.append(a) or "summary")
+    monkeypatch.setenv("OPENROUTER_API_KEY", "x")
+    r = CliRunner().invoke(app, ["daily", "--state", str(tmp_path / "s"), "--dry-run",
+                                 "--max-minutes", "7"])
+    assert r.exit_code == 0, r.output
+    assert seen[0][-1] == 7

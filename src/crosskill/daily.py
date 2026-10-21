@@ -175,17 +175,22 @@ def _spent() -> float:
 
 
 class Budget:
-    """Per-run cap. Keeps room for each running task plus one more, each as costly as the
-    costliest step seen so far."""
+    """Per-run cap and wall-clock deadline (time.monotonic()). Keeps room for each running task
+    plus one more, each as costly as the costliest step seen so far."""
 
-    def __init__(self, max_usd: float):
+    def __init__(self, max_usd: float, deadline: float | None = None):
         self.mark = _spent()
-        self.limit, self.step = self.mark + max_usd, 0.0
+        self.limit, self.step, self.deadline = self.mark + max_usd, 0.0, deadline
+        self.reason = ""  # why left() last said no: "budget" or "deadline"
 
     def left(self, running: int = 0) -> bool:
+        if self.deadline is not None and time.monotonic() >= self.deadline:
+            self.reason = "deadline"
+            return False
         now = _spent()
         self.step, self.mark = max(self.step, now - self.mark), now
-        return now + self.step * (running + 1) < self.limit
+        self.reason = "" if now + self.step * (running + 1) < self.limit else "budget"
+        return not self.reason
 
 
 def _solo(tmp: Path, dirname: str, d: Path) -> Path:
@@ -265,13 +270,13 @@ def _popular_set(state_dir, model, budget, list_popular, fetch, errors, tmp, not
         return {sk.dirname: sk for sk, _ in entries}, {sk.dirname: d for sk, d in entries}, set()
     gate, ok = _parallel(entries, lambda e: _gate(e[1], e[0].dirname, tmp), budget, errors, "triage")
     if not ok:
-        notes.append(f"popular set: {len(entries)} downloaded, budget ran out in triage")
+        notes.append(f"popular set: {len(entries)} downloaded, {budget.reason} reached in triage")
         return None
     read = [entries[i] for i, ok in sorted(gate.items()) if ok]
     warm, ok = _parallel(read, lambda e: extract(_solo(tmp, e[0].dirname, e[1]), model), budget,
                      errors, "extract")
     notes.append(f"popular set: {len(entries)} downloaded, {len(read)} passed the gate, "
-                 f"{len(warm)} extracted by the LLM" + ("" if ok else " before the budget ran out"))
+                 f"{len(warm)} extracted by the LLM" + ("" if ok else f" before the {budget.reason} was reached"))
     if not ok:
         return None
     failed = {read[i][0].dirname for i in range(len(read)) if i not in warm}
@@ -314,11 +319,13 @@ def _check(sk, state_dir, pop, model, gh, feed_dir, g, ledger, fetch, tmp) -> li
 def discover(state_dir: Path, gh, feed_dir: Path, max_usd: float, max_skills: int, model: str | None,
              errors: list[str] | None = None, notes: list[str] | None = None,
              list_new=sources.updated_since,
-             list_popular=sources.popular, fetch=sources.download) -> list[str]:
-    """Check skills updated since the cursor, oldest first, within the budget and skill cap."""
+             list_popular=sources.popular, fetch=sources.download,
+             deadline: float | None = None) -> list[str]:
+    """Check skills updated since the cursor, oldest first, within the budget, the skill cap and
+    the deadline (time.monotonic()); the cursor stays at the last fully processed skill."""
     errors = [] if errors is None else errors
     notes = [] if notes is None else notes
-    budget = Budget(max_usd)  # per run, whatever this process spent before
+    budget = Budget(max_usd, deadline)  # per run, whatever this process spent before
     cursor_path, ledger_path = state_dir / "cursor.json", state_dir / "ledger.json"
     cursor = _load(cursor_path, {"clawhub": int(time.time() * 1000) - DAY_MS})
     ledger, keys = _load(ledger_path, {}), []
@@ -340,7 +347,7 @@ def discover(state_dir: Path, gh, feed_dir: Path, max_usd: float, max_skills: in
                 notes.append(f"skill cap reached: {max_skills} checked")
                 break
             if not budget.left():
-                notes.append(f"budget reached before {sk.id}")
+                notes.append(f"{budget.reason} reached before {sk.id}; it is checked next run")
                 break
             stop = False
             try:
@@ -374,8 +381,10 @@ def discover(state_dir: Path, gh, feed_dir: Path, max_usd: float, max_skills: in
 
 
 def run(state_dir: Path, feed_dir: Path, gh, max_usd: float = 0.5, max_skills: int = 50,
-        model: str | None = llm.DEFAULT_MODEL, **sources_) -> str:
-    """One daily run: resume labelled candidates, then discover new ones. Returns a summary."""
+        model: str | None = llm.DEFAULT_MODEL, max_minutes: float = 45, **sources_) -> str:
+    """One daily run: resume labelled candidates, then discover new ones until the budget, the
+    skill cap or `max_minutes` of wall-clock time runs out. Returns a summary."""
+    deadline = time.monotonic() + max_minutes * 60
     state_dir.mkdir(parents=True, exist_ok=True)
     os.environ["LANGFUSE_TRACING_ENABLED"] = "false"  # no traces from the daily run (langfuse 4.x)
     saved_cache, start, errors, notes = llm.CACHE, _spent(), [], []
@@ -390,7 +399,7 @@ def run(state_dir: Path, feed_dir: Path, gh, max_usd: float = 0.5, max_skills: i
         resumed = resume_waiting(state_dir, gh, feed_dir, errors)
         published = len(_load(feed_dir / "advisories.json", [])) - before
         keys = discover(state_dir, gh, feed_dir, max_usd, max_skills, model, errors, notes,
-                        **sources_)
+                        deadline=deadline, **sources_)
     finally:
         llm.CACHE, llm.allow = saved_cache, None
     head = (f"resumed {resumed}, published {published}, new candidates {len(keys)}, "

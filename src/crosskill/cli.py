@@ -127,6 +127,8 @@ def daily_(
     feed: Annotated[Path, typer.Option(help="Feed directory the advisories are written to")] = Path("feed"),
     max_usd: Annotated[float, typer.Option(help="LLM and Jev spend cap for this run")] = 0.5,
     max_skills: Annotated[int, typer.Option(help="Most new skills checked this run")] = 50,
+    max_minutes: Annotated[float, typer.Option(
+        help="Wall-clock limit: no new skill starts after it (keep it under the job timeout)")] = 45,
     dry_run: Annotated[bool, typer.Option(
         "--dry-run", help="In-memory GitHub and a copy of --state and --feed: print "
         "candidates instead of opening issues")] = False,
@@ -138,7 +140,7 @@ def daily_(
 
     need_key(False)
     if not dry_run:
-        typer.echo(run(state, feed, GitHub.from_env(), max_usd, max_skills, model))
+        typer.echo(run(state, feed, GitHub.from_env(), max_usd, max_skills, model, max_minutes))
         return
     gh = MemoryGitHub()
     with tempfile.TemporaryDirectory() as tmp:  # a dry run never writes the real state or feed
@@ -147,6 +149,6 @@ def daily_(
             copies.append(Path(tmp) / name)
             if src.exists():
                 shutil.copytree(src, copies[-1], symlinks=True)
-        typer.echo(run(copies[0], copies[1], gh, max_usd, max_skills, model))
+        typer.echo(run(copies[0], copies[1], gh, max_usd, max_skills, model, max_minutes))
     for issue in gh.issues.values():
         typer.echo(f"\n=== {issue['title']}\n\n{issue['body']}")
