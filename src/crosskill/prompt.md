@@ -11,17 +11,19 @@ Kinds and how to write `arg`:
   `*` when the destination is not named. Only when the text says data is sent, posted, uploaded
   or replied. Fetching a page or searching is not egress.
 - `untrusted`: it takes in content an attacker could control. `web` for web pages, search
-  results, URLs and downloads, `mail` for incoming mail, `github:issues` for issues, pull
+  results, URLs, downloads, mirrored packages and anything opened in a browser, `mail` for incoming mail, `github:issues` for issues, pull
   requests and comments.
 - `executes`: it runs a program. `bash` when it runs shell commands chosen at run time (any
-  command, commands from a previous step or from a page). The interpreter (`python`, `node`, `sh`)
+  command, commands from a previous step or from a page). Running the project task, test or tool
+  the user asks for, or installing the tools a project needs, is not `bash`. The interpreter (`python`, `node`, `sh`)
   when it runs a script that is not named. `sudo` or `pip install` when it does that. Otherwise
   the exact command (`pytest`, `python scripts/format.py`).
 
 Rules:
 
 - Use only what the text says or what a script's code does. Do not guess resources that are not
-  named. The YAML frontmatter (`allowed-tools`) is handled elsewhere: use it only to choose `rule`.
+  named. The YAML frontmatter (`allowed-tools`) is handled elsewhere: never take a fact, an `arg`
+  or a `quote` from it. Use it only to choose `rule`.
 - Ignore files of the current project (the diff, the files the user names, the tests).
 - `quote` is copied exactly from one line of the file and shows the fact.
 - `rule` is the Claude Code permission the agent needs for the fact, in permission syntax:

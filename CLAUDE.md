@@ -13,10 +13,10 @@ which stage is current before starting work. Rule from the plan: finish a stage 
 criteria before opening the next one.
 
 Status: stage 1 done (22/22 static toxic findings, 0 false findings on clean, a few ms per
-install). Stage 2 in progress: LLM extractor, cache, `--no-llm`, labels and the Langfuse dataset
-and prompt are in place. Prompt v1 evals: `deepseek/deepseek-v4.1-flash` P 0.83 / R 0.96, $0.03 per
-corpus run; `deepseek/deepseek-v4-pro` P 0.75 / R 0.86, $0.25. LLM scan recall on toxic installs is
-24/25 (static 22/25), 0 false findings on clean. OpenRouter models that reject `temperature` (Sonnet
+install). Stage 2 done. Evals per prompt version (P / R, cost per corpus run):
+`deepseek/deepseek-v4.1-flash` v1 0.83 / 0.96, v2 0.96 / 0.96, $0.03; `deepseek/deepseek-v4-pro`
+v1 0.75 / 0.86, v2 0.88 / 0.88, $0.23. With v2 + flash the scan gives exactly the expected
+findings on all 77 installs (static alone flags 21/24 toxic), 0 false findings on clean. OpenRouter models that reject `temperature` (Sonnet
 5.5, GPT-5.6) fail under `require_parameters`.
 
 Langfuse is the local Docker stack from the triage-guard project (http://localhost:3000, project
