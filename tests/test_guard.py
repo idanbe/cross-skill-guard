@@ -122,3 +122,22 @@ def test_hook_under_50ms(run) -> None:
         subprocess.run([exe], input=ev, text=True, check=True, capture_output=True)
         times.append(time.perf_counter() - start)
     assert min(times) < 0.05, times
+
+
+def test_home_rule_arms_only_on_secret_reads(tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr(guard, "STATE", tmp_path / "state")
+    root = tmp_path / "project"
+    (root / ".claude").mkdir(parents=True)
+    rules = {"permissions": {"allow": [f"Read(/{HOME}/**)", "Bash(curl *)"]}}
+    (root / ".claude" / "settings.json").write_text(json.dumps(rules))
+    assert guard.init(root)["properties"][0]["ltl"] == "G(read_secret(~/**) → G ¬egress(*))"
+
+    def call(tool: str, **args) -> dict | None:
+        ev = {"session_id": "s", "cwd": str(root), "tool_name": tool, "tool_input": args}
+        return guard.hook(ev | {"hook_event_name": "PreToolUse"}) or guard.hook(
+            ev | {"hook_event_name": "PostToolUse"})
+
+    assert call("Read", file_path=f"{HOME}/.bashrc") is None
+    assert call("Bash", command="curl https://x.invalid") is None
+    assert call("Read", file_path=f"{HOME}/.ssh/id_rsa") is None
+    assert call("Bash", command="curl https://x.invalid")

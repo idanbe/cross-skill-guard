@@ -9,7 +9,6 @@ Hooks read the event as JSON on stdin. PreToolUse denies a call that would drive
 into its bad state, PostToolUse advances the state, SessionStart checks the install hashes.
 """
 
-import hashlib
 import json
 import os
 import re
@@ -17,7 +16,6 @@ import shlex
 import sys
 from fnmatch import fnmatch
 from pathlib import Path
-from urllib.parse import urlparse
 
 GUARD = Path(".claude") / "crosskill-guard.json"
 STATE = Path(os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache") / "crosskill" / "guard"
@@ -25,7 +23,7 @@ STATE = Path(os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache") / "cros
 # that both reads a secret and sends it is a violation on its own.
 TEMPLATES = {
     "secret_exfiltration": ("NeverAfter", "G({a} → G ¬{b})",
-                            {"a": ("read", "resource"), "b": ("egress", "sink")}),
+                            {"a": ("read_secret", "resource"), "b": ("egress", "sink")}),
     "untrusted_to_execution": ("NeverAfter", "G({a} → G ¬{b})",
                                {"a": ("untrusted", "source"), "b": ("exec", "sink")}),
     "lethal_trifecta": ("NeverAfterBoth", "G((O {a} ∧ O {b}) → ¬{c})",
@@ -71,6 +69,8 @@ def automata() -> dict:
 
 def inputs(root: Path) -> str:
     """Hash of the files the scan reads, so SessionStart can tell when the install changed."""
+    import hashlib
+
     h = hashlib.sha256()
     for base in (root, root / ".claude"):
         files = [*base.glob("skills/*/**/*"), base / "settings.json", base / "settings.local.json"]
@@ -97,14 +97,14 @@ def properties(findings: list[dict]) -> list[dict]:
 
 def init(root: Path, model: str | None = None) -> dict:
     """Scan the install and write its guard file. Returns what was written."""
-    from crosskill.extract import extract
+    from crosskill.extract import SECRET_FILES, extract
     from crosskill.scan import scan
 
     mcp: dict[str, list] = {}
     for g in extract(root):
         if g.rule == f"mcp__{g.comp}" and not g.denied:
             mcp.setdefault(g.comp, []).append([g.kind.replace("reads", "read"), g.arg])
-    guard = {"hash": inputs(root), "automata": automata(), "mcp": mcp,
+    guard = {"hash": inputs(root), "automata": automata(), "mcp": mcp, "secrets": SECRET_FILES,
              "properties": properties(scan(root, model))}
     (root / GUARD).parent.mkdir(exist_ok=True)
     (root / GUARD).write_text(json.dumps(guard, indent=1, ensure_ascii=False))
@@ -122,6 +122,12 @@ def rel(p: str, root: Path) -> str:
     return p
 
 
+def host(url: str) -> str:
+    """The host of a URL, `*` when there is none (urllib.parse is slow to import for a hook)."""
+    m = re.match(r"\w+://(?:[^@/]*@)?([^:/?#]+)", url)
+    return m[1].lower() if m else "*"
+
+
 def bash_events(cmd: str, root: Path) -> list[tuple[str, str]]:
     events = []
     for seg in filter(None, map(str.strip, re.split(r"\|\|?|&&|;|\n", cmd))):
@@ -134,7 +140,7 @@ def bash_events(cmd: str, root: Path) -> list[tuple[str, str]]:
         events.append(("exec", " ".join(words)))
         if words[0] in NETWORK:
             url = next((w for w in words if "://" in w), "")
-            events += [("untrusted", "web"), ("egress", urlparse(url).hostname or "*")]
+            events += [("untrusted", "web"), ("egress", host(url))]
         if words[0] in ("printenv", "env") and len(words) == 1:
             events.append(("read", "env:*"))
         # ponytail: any path-like word counts as read; parse per command if this over-taints
@@ -150,7 +156,7 @@ def events(tool: str, args: dict, root: Path, mcp: dict) -> list[tuple[str, str]
     if tool == "Grep" and args.get("path"):
         return [("read", rel(args["path"], root))]
     if tool == "WebFetch":
-        return [("untrusted", "web"), ("egress", urlparse(args.get("url", "")).hostname or "*")]
+        return [("untrusted", "web"), ("egress", host(args.get("url", "")))]
     if tool == "WebSearch":
         return [("untrusted", "web")]
     if tool == "Bash":
@@ -158,6 +164,13 @@ def events(tool: str, args: dict, root: Path, mcp: dict) -> list[tuple[str, str]
     if tool.startswith("mcp__"):
         return [tuple(e) for e in mcp.get(tool.split("__")[1], [])]
     return []
+
+
+def with_secrets(evs: list, secrets: list[str]) -> list:
+    """Add `read_secret` for reads that cover a credential file, so a rule like `Read(~/**)`
+    arms only when a secret is read, not on every file under the home directory."""
+    return evs + [("read_secret", a) for k, a in evs if k == "read" and any(
+        fnmatch(f, a) or f.startswith(a.rstrip("/") + "/") for f in secrets)]
 
 
 def matches(event: tuple[str, str], letter: list[str]) -> bool:
@@ -218,7 +231,8 @@ def hook(event: dict) -> dict | None:
     except FileNotFoundError:
         state = {}
     tool, args = event.get("tool_name", ""), event.get("tool_input") or {}
-    new, reason = step(guard, state, events(tool, args, root, guard["mcp"]), describe(tool, args, root))
+    evs = with_secrets(events(tool, args, root, guard["mcp"]), guard["secrets"])
+    new, reason = step(guard, state, evs, describe(tool, args, root))
     if name == "PreToolUse":
         return reason and {"hookSpecificOutput": {"hookEventName": "PreToolUse",
                                                   "permissionDecision": "deny",

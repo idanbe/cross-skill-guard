@@ -66,15 +66,22 @@ def bash_caps(arg: str | None) -> list[tuple]:
     return [("executes", cmd, cmd in ARBITRARY and cmd != arg)]
 
 
+def path_arg(p: str) -> str:
+    """`//abs` is an absolute path in permission rules; one under $HOME is written with `~`."""
+    p = p.removeprefix("/") if p.startswith("//") else p
+    home = str(Path.home())
+    return "~" + p[len(home):] if p == home or p.startswith(home + "/") else p
+
+
 def rule_caps(rule: str) -> list[tuple]:
     m = RULE.match(rule.strip())
     if not m:
         return []
     tool, arg = m.groups()
     if tool == "Read" and arg:
-        return [("reads", arg)]
+        return [("reads", path_arg(arg))]
     if tool in ("Write", "Edit") and arg:
-        return [("writes", arg)]
+        return [("writes", path_arg(arg))]
     if tool == "WebFetch":
         return [("untrusted", "web"), ("egress", arg.removeprefix("domain:") if arg else "*")]
     if tool == "WebSearch":
