@@ -133,16 +133,20 @@ against a set of popular skills and MCP servers, and looks for toxic combination
 ClawHub is the only source for now.
 
 ```
-crosskill daily --state DIR --feed DIR [--max-usd 0.5] [--max-skills 50] [--dry-run]
+crosskill daily --state DIR --feed DIR [--max-usd 0.5] [--max-skills 50] [--max-minutes 45] [--dry-run]
 ```
 
-- The popular set warms up over the first ~2 runs at the $0.50 cap, before new skills get checked.
+- Spend is capped per run: each run, scheduled or dispatched by hand, gets its own $0.50
+  (`--max-usd`); the popular set warms up over the first ~2 runs, before new skills get checked.
+  A run also stops starting new skills after `--max-minutes`; unchecked skills wait for the next run.
 - Candidates appear as GitHub issues labeled `crosskill-candidate`. Add `approve` to publish one
   to `feed/advisories.json`, or `reject` to drop it for good.
 - Run state (checkpoints, ledger, cursor, caches) lives on the `data` branch. Downloaded skills
   are never committed; they are kept in the Actions cache.
-- To keep candidates private until approval, set the `CROSSKILL_ISSUES_REPO` (`owner/name`) and
-  `CROSSKILL_ISSUES_TOKEN` secrets. Without them, issues go to this repository.
+- To keep candidate issues private, set the `CROSSKILL_ISSUES_REPO` (`owner/name`, a private
+  repository) and `CROSSKILL_ISSUES_TOKEN` secrets; without them, issues go to this repository.
+  Either way the public `data` branch holds `ledger.json` and `checkpoints.sqlite`, which
+  include unapproved and rejected candidates.
 - `crosskill scan` prints "possible match" lines for installed skills that appear in the feed
   (`--offline` or `CROSSKILL_OFFLINE` skips the lookup).
 - `crosskill eval --triage` scores the Jev triage gate.

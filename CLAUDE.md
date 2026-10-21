@@ -17,13 +17,16 @@ install). Stage 2 done. Evals per prompt version (P / R, cost per corpus run):
 `deepseek/deepseek-v4.1-flash` v1 0.83 / 0.96, v2 0.96 / 0.96, $0.03; `deepseek/deepseek-v4-pro`
 v1 0.75 / 0.86, v2 0.88 / 0.88, $0.23. With v2 + flash the scan gives exactly the expected
 findings on all 77 installs (static alone flags 21/24 toxic), 0 false findings on clean. OpenRouter models that reject `temperature` (Sonnet
-5.5, GPT-5.6) fail under `require_parameters`. Jev role triage (`crosskill eval --triage`, 92 skills, $0.002): per-role P/R at 0.5 are reads 0.68/0.93, sends 1.00/0.90, untrusted 0.89/0.85, code 0.40/0.80; risky-skill recall at threshold 0.2 is 46/46. Stage 3 in progress: `crosskill guard` (templates,
-automata, hooks, plugin) works and blocks the demo flow in real Claude Code, ~25 ms per hook call.
-Instead of the plan's CONNECT proxy, an armed egress property turns the network off for later
-Bash commands (proxy env vars to a closed port, via CLAUDE_ENV_FILE): no install, same reach as a
-proxy (proxy-aware tools only; Node before 22.21 ignores it). Not done yet: a week of own use with
-no false blocks. Stage 4 done: `--policy` (Rego, local `opa eval`) decides block/warn/ignore per
-finding; strict and permissive examples in `policies/`, `opa test` runs in CI.
+5.5, GPT-5.6) fail under `require_parameters`. Jev role triage (`crosskill eval --triage`, 92 skills, $0.002): per-role P/R at 0.5 are reads 0.68/0.93, sends 1.00/0.90, untrusted 0.89/0.85, code 0.40/0.80; risky-skill recall at threshold 0.2 is 46/46. Stage 3: `crosskill guard`
+(templates, automata, hooks, plugin) blocks the demo flow in real Claude Code, ~25 ms per hook
+call; an armed egress property turns the network off for later Bash commands (proxy env vars to a
+closed port, via CLAUDE_ENV_FILE) instead of the plan's CONNECT proxy (proxy-aware tools only;
+Node before 22.21 ignores it); its week of own use with no false blocks is still open. Stage 4 done: `--policy`
+(Rego, local `opa eval`) decides block/warn/ignore per finding; strict and permissive examples in
+`policies/`, `opa test` runs in CI. Stage 5 built, awaiting its first live runs: `crosskill daily`
+(LangGraph threads held for an `approve`/`reject` issue label, ClawHub source, Jev gate, $0.50
+per-run cap, 45-minute deadline) publishes to `feed/`, and `crosskill scan` prints possible
+matches against it.
 
 Langfuse is the local Docker stack from the triage-guard project (http://localhost:3000, project
 `cross-skill-guard`); `.env` holds its keys and is gitignored.
