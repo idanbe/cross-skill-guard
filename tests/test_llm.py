@@ -87,6 +87,7 @@ def test_calls_are_bounded_and_failed_calls_charged(monkeypatch: pytest.MonkeyPa
         llm.complete("sys", "user", "m")
     assert llm.spent_usd == 0.05
     assert seen["client"]["timeout"] == llm.TIMEOUT_S == 120
+    assert seen["client"]["max_retries"] == llm.RETRIES == 2
     assert seen["call"]["max_tokens"] == llm.MAX_TOKENS
     assert seen["call"]["extra_body"]["reasoning"] == {"max_tokens": llm.REASONING_TOKENS}
     assert llm.REASONING_TOKENS < llm.MAX_TOKENS
@@ -137,3 +138,22 @@ def test_deterministic_failures_are_cached(monkeypatch: pytest.MonkeyPatch, tmp_
     with pytest.raises(APITimeoutError):
         llm.facts_for("SKILL.md", "slow", "m")
     assert len(list(tmp_path.glob("*.json"))) == 1 and llm.in_flight == 0
+
+
+def test_transient_errors_are_told_apart() -> None:
+    import json
+
+    import httpx
+    from openai import APITimeoutError, BadRequestError, InternalServerError, RateLimitError
+
+    req = httpx.Request("POST", "https://openrouter.ai")
+
+    def status(cls, code):
+        return cls("x", response=httpx.Response(code, request=req), body=None)
+
+    assert llm.transient(APITimeoutError(request=req))
+    assert llm.transient(status(RateLimitError, 429))
+    assert llm.transient(status(InternalServerError, 503))
+    assert not llm.transient(status(BadRequestError, 400))
+    assert not llm.transient(json.JSONDecodeError("x", "", 0))
+    assert not llm.transient(FileNotFoundError("download"))

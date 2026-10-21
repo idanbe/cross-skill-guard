@@ -331,6 +331,9 @@ def discover(state_dir: Path, gh, feed_dir: Path, max_usd: float, max_skills: in
             except llm.OverBudget:
                 break  # not processed: the next run checks this skill again
             except Exception as e:  # noqa: BLE001 - the skill counts as processed
+                if llm.transient(e):  # retries exhausted: stop, the next run checks it again
+                    errors.append(f"discovery stopped at {sk.id}: {e!r}")
+                    break
                 errors.append(f"{sk.id}: {e!r}")
             _save(ledger_path, ledger)
             cursor["clawhub"] = sk.updated_at

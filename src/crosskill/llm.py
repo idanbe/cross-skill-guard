@@ -21,6 +21,7 @@ spent_usd = 0.0  # cost of uncached calls this process
 SPEND_LOCK = threading.Lock()  # the daily run extracts from worker threads
 # Bounds on one call: a fact list fits easily; a runaway reasoning loop (131k tokens seen) does not.
 MAX_TOKENS, REASONING_TOKENS, TIMEOUT_S = 8192, 4096, 120
+RETRIES = 2  # SDK retries on 429, 5xx and connection errors (timeouts included)
 # Spend gate for runs with a cap (the daily run sets it): allow(calls_in_flight) -> bool, asked
 # under SPEND_LOCK before each uncached call. `max_call_usd` is the costliest call seen.
 allow = None
@@ -54,7 +55,7 @@ def complete(system: str, user: str, model: str, prompt=None) -> dict:
     from langfuse.openai import OpenAI  # imported here so static scans stay fast
 
     client = OpenAI(base_url="https://openrouter.ai/api/v1", api_key=os.environ["OPENROUTER_API_KEY"],
-                    timeout=TIMEOUT_S, max_retries=0)
+                    timeout=TIMEOUT_S, max_retries=RETRIES)
     start = time.perf_counter()
     try:
         r = client.chat.completions.parse(
@@ -81,6 +82,16 @@ def deterministic(e: Exception) -> bool:
 
     return isinstance(e, (LengthFinishReasonError, ContentFilterFinishReasonError, ValidationError,
                           json.JSONDecodeError))
+
+
+def transient(e: Exception) -> bool:
+    """A failure worth retrying later: timeout, connection error, 429 or 5xx from the API."""
+    from openai import APIConnectionError, APIStatusError, RateLimitError
+
+    if deterministic(e):
+        return False
+    return isinstance(e, (APIConnectionError, RateLimitError)) or (
+        isinstance(e, APIStatusError) and e.status_code >= 500)
 
 
 def facts_for(name: str, text: str, model: str, prompt=None) -> dict:

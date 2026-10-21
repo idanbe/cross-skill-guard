@@ -292,3 +292,26 @@ def test_llm_gate_stops_without_skipping_the_skill(tmp_path, offline):
     assert offline["llm"] == 0 and "spend $0.0000" in summary
     assert not (tmp_path / "state" / "cursor.json").exists()  # the skill is checked next run
     assert llm.allow is None
+
+
+def test_transient_llm_error_retries_the_skill_next_run(tmp_path, offline, monkeypatch):
+    import httpx
+    from openai import APITimeoutError
+
+    src = Source([skill("cost-report", T0 + 1), skill("uploader", T0 + 2)], [],
+                 {"uploader": T4 / "uploader", "cost-report": T4 / "cost-report"})
+    gh, cursor = MemoryGitHub(), tmp_path / "state" / "cursor.json"
+    _complete = llm.complete
+
+    def timeout(*a, **kw):
+        raise APITimeoutError(request=httpx.Request("POST", "https://openrouter.ai"))
+
+    monkeypatch.setattr(llm, "complete", timeout)
+    summary = go(tmp_path, gh, src)
+    assert "discovery stopped at clawhub/acme/cost-report" in summary
+    assert not cursor.exists() and src.downloads == ["cost-report"]  # uploader not reached
+    monkeypatch.setattr(llm, "complete", _complete)
+    go(tmp_path, gh, src)
+    assert offline["llm"] > 0  # cost-report is read this time: the timeout was not cached
+    assert json.loads(cursor.read_text()) == {"clawhub": T0 + 2}
+    assert src.downloads == ["cost-report", "uploader"]
