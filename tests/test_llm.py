@@ -157,3 +157,48 @@ def test_transient_errors_are_told_apart() -> None:
     assert not llm.transient(status(BadRequestError, 400))
     assert not llm.transient(json.JSONDecodeError("x", "", 0))
     assert not llm.transient(FileNotFoundError("download"))
+
+
+def test_failed_call_without_cost_charges_the_reserve(monkeypatch: pytest.MonkeyPatch) -> None:
+    """R19: a timeout or unreadable answer has no usage; it is charged as the costliest call so
+    far (at least the reserve), once per attempt the SDK may have made."""
+    from types import SimpleNamespace
+
+    import httpx
+    import langfuse.openai
+    from openai import APITimeoutError
+    from pydantic import ValidationError
+
+    errors = [APITimeoutError(request=httpx.Request("POST", "https://openrouter.ai"))]
+
+    def parse(**kw):
+        raise errors[0]
+
+    class Client:
+        def __init__(self, **kw):
+            self.chat = SimpleNamespace(completions=SimpleNamespace(parse=parse))
+
+    monkeypatch.setattr(langfuse.openai, "OpenAI", Client)
+    monkeypatch.setenv("OPENROUTER_API_KEY", "x")
+    monkeypatch.setattr(llm, "spent_usd", 0.0)
+    monkeypatch.setattr(llm, "max_call_usd", 0.0)
+    with pytest.raises(APITimeoutError):
+        llm.complete("sys", "user", "m")
+    assert llm.spent_usd == pytest.approx(llm.CALL_RESERVE_USD * (llm.RETRIES + 1))
+    llm.charge(0.02)  # a costlier call raises the per-attempt charge
+    try:
+        llm.Facts.model_validate({"facts": "nope"})
+    except ValidationError as e:
+        errors[0] = e
+    with pytest.raises(ValidationError):
+        llm.complete("sys", "user", "m")  # unparsable: not retried by the SDK, one attempt
+    assert llm.spent_usd == pytest.approx(llm.CALL_RESERVE_USD * 3 + 0.02 + 0.02)
+
+
+def test_answer_without_usage_charges_the_reserve(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    monkeypatch.setattr(llm, "CACHE", tmp_path)
+    monkeypatch.setattr(llm, "spent_usd", 0.0)
+    monkeypatch.setattr(llm, "max_call_usd", 0.0)
+    monkeypatch.setattr(llm, "complete", lambda *a: {"facts": [], "cost": None})
+    llm.facts_for("SKILL.md", "no usage", "m")
+    assert llm.spent_usd == pytest.approx(llm.CALL_RESERVE_USD)

@@ -29,7 +29,7 @@ from crosskill.sources import Skill
 LABELS = ["approve", "reject", "crosskill-candidate"]
 MAX_PER_SKILL = 3
 WORKERS = 8
-CALL_RESERVE_USD = 0.008  # one bounded flash call: 8k completion tokens plus the prompt
+CALL_RESERVE_USD = llm.CALL_RESERVE_USD
 POPULAR_MAX_AGE = timedelta(days=7)
 DAY_MS = 86_400_000
 

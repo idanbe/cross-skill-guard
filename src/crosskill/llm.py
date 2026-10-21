@@ -22,6 +22,7 @@ SPEND_LOCK = threading.Lock()  # the daily run extracts from worker threads
 # Bounds on one call: a fact list fits easily; a runaway reasoning loop (131k tokens seen) does not.
 MAX_TOKENS, REASONING_TOKENS, TIMEOUT_S = 8192, 4096, 120
 RETRIES = 2  # SDK retries on 429, 5xx and connection errors (timeouts included)
+CALL_RESERVE_USD = 0.008  # one bounded flash call: 8k completion tokens plus the prompt
 # Spend gate for runs with a cap (the daily run sets it): allow(calls_in_flight) -> bool, asked
 # under SPEND_LOCK before each uncached call. `max_call_usd` is the costliest call seen.
 allow = None
@@ -33,11 +34,15 @@ class OverBudget(RuntimeError):
     pass
 
 
-def charge(cost: float | None) -> None:
+def charge(cost: float | None, attempts: int = 1) -> None:
+    """Count a call's cost. Unknown cost (None) counts as the costliest call so far, at least
+    CALL_RESERVE_USD, once per attempt: a timed-out or unreadable call may still be billed."""
     global spent_usd, max_call_usd
     with SPEND_LOCK:
-        spent_usd += cost or 0
-        max_call_usd = max(max_call_usd, cost or 0)
+        if cost is None:
+            cost = max(max_call_usd, CALL_RESERVE_USD)
+        spent_usd += cost * attempts
+        max_call_usd = max(max_call_usd, cost)
 
 
 class Fact(BaseModel):
@@ -68,7 +73,10 @@ def complete(system: str, user: str, model: str, prompt=None) -> dict:
         )
     except Exception as e:
         # A failed call can still be billed (e.g. LengthFinishReasonError carries the completion).
-        charge(getattr(getattr(getattr(e, "completion", None), "usage", None), "cost", None))
+        # Without a cost, charge the reserve for every attempt the SDK may have made: its retries
+        # (429, 5xx, timeouts, connection errors) are not visible from here.
+        cost = getattr(getattr(getattr(e, "completion", None), "usage", None), "cost", None)
+        charge(cost, 1 if cost is not None or not transient(e) else RETRIES + 1)
         raise
     parsed = r.choices[0].message.parsed
     return {"facts": [f.model_dump() for f in parsed.facts] if parsed else [],
@@ -110,7 +118,7 @@ def facts_for(name: str, text: str, model: str, prompt=None) -> dict:
     start = time.perf_counter()
     try:
         out = complete(system, user, model, prompt)
-        charge(out.get("cost"))
+        charge(out.get("cost"))  # no usage in the answer: charged as the reserve
     except Exception as e:
         if not deterministic(e):
             raise  # timeouts, connection errors, 429/5xx: try again on a later run
