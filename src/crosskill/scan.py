@@ -1,7 +1,6 @@
 """Run the clingo rules over extracted facts and build findings with a proof chain."""
 
 import json
-from collections.abc import Callable
 from pathlib import Path
 
 import clingo
@@ -62,16 +61,9 @@ def finding(atom: clingo.Symbol, grants: list[Grant]) -> tuple[list[int], dict]:
     return ids, {"rule": atom.name, "path": path, **fields, "chain": chain}
 
 
-def scan(root: Path, model: str | None = None, keep: Callable[[dict], bool] | None = None,
-         rank: Callable[[dict], tuple] | None = None,
-         llm_for: Callable[[str], bool] | None = None) -> list[dict]:
-    """Findings for an install. `model` turns on the LLM extractor; None is static only.
-
-    `keep` drops findings before the best-per-key choice; `rank` replaces the default
-    (shortest path, then name) ordering used to choose among findings with the same key.
-    `llm_for` limits the LLM extractor to the skill directories it accepts.
-    """
-    grants = extract(Path(root), model, llm_for)
+def scan(root: Path, model: str | None = None) -> list[dict]:
+    """Findings for an install. `model` turns on the LLM extractor; None is static only."""
+    grants = extract(Path(root), model)
     ctl = clingo.Control(["--warn=none"])
     ctl.add("base", [], RULES + facts(grants))
     ctl.ground([("base", [])])
@@ -82,11 +74,9 @@ def scan(root: Path, model: str | None = None, keep: Callable[[dict], bool] | No
     for atom in atoms:
         ids, f = finding(atom, grants)
         key = (f["rule"], *(f[k] for k in FIELDS[f["rule"]]))
-        if keep and not keep(f):
-            continue
-        r = rank(f) if rank else (len(ids), f["path"])
-        if key not in best or r < best[key][0]:
-            best[key] = (r, f)
+        rank = (len(ids), f["path"])
+        if key not in best or rank < best[key][0]:
+            best[key] = (rank, f)
     return [f for _, (_, f) in sorted(best.items())]
 
 

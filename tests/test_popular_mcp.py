@@ -4,7 +4,7 @@ from pathlib import Path
 
 from crosskill.extract import extract, is_private
 
-POPULAR = Path(__file__).parent.parent / "pipeline" / "popular-mcp.json"
+POPULAR = Path(__file__).parent / "fixtures" / "popular-mcp.json"
 NAMES = {"filesystem", "fetch", "playwright", "github", "postgres", "sqlite", "slack",
          "brave-search", "puppeteer", "gdrive"}
 

@@ -14,7 +14,6 @@ dependencies = ["typer>=0.12", "clingo>=5.7", "bashlex>=0.18", "pyyaml>=6", "pyd
 
 [project.optional-dependencies]
 dev = ["pytest>=8", "ruff>=0.5"]
-feed = ["langgraph>=1.2,<2", "langgraph-checkpoint-sqlite>=3,<4"]
 
 [project.scripts]
 crosskill = "crosskill.cli:app"

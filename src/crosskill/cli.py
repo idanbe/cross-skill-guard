@@ -1,6 +1,6 @@
 import os
-import shutil
-import tempfile
+import sys
+import webbrowser
 from pathlib import Path
 from typing import Annotated
 
@@ -64,6 +64,24 @@ def possible_matches(path: Path) -> list[str]:
         return []
 
 
+def share(path: Path, findings: list[dict], ask: bool) -> None:
+    """Offer to share findings as GitHub issues. Asking needs a terminal; CI never sees it."""
+    from crosskill import feed
+
+    reports = [r for f in findings if (r := feed.report(path, f))]
+    if not reports or (ask and not (sys.stdin.isatty() and sys.stdout.isatty())):
+        return
+    q = (f"\nShare {len(reports)} finding(s) with the crosskill feed? Each opens as a GitHub issue "
+         "you review before submitting")
+    if ask and not typer.confirm(q, default=False):
+        return
+    for r in reports:
+        url = feed.issue_url(r)
+        typer.echo(url)
+        if ask:
+            webbrowser.open(url)
+
+
 @app.command()
 def scan(
     path: Annotated[Path, typer.Argument(help="Installation directory to scan")] = Path("."),
@@ -73,8 +91,13 @@ def scan(
     policy: Policy = None,
     data: Data = None,
     offline: Annotated[bool, typer.Option("--offline", help="Skip the published-advisories lookup")] = False,
+    report: Annotated[bool, typer.Option(
+        "--report", help="Print a link to share each finding as a GitHub issue, without asking")] = False,
 ) -> None:
-    """Scan an installation for toxic flows. Exits 1 when any finding blocks."""
+    """Scan an installation for toxic flows. Exits 1 when any finding blocks.
+
+    In a terminal, it then asks whether to share the findings: each one opens as a pre-filled
+    GitHub issue you review and submit yourself."""
     need_key(no_llm)
     findings = run_scan(path, None if no_llm else model)
     if policy:
@@ -83,6 +106,8 @@ def scan(
     if not sarif and not offline and os.environ.get("CROSSKILL_OFFLINE") != "1":
         for line in possible_matches(path):
             typer.echo(line)
+    if not sarif:
+        share(path, findings, ask=not report)
     raise typer.Exit(code=1 if any(f.get("action", "block") == "block" for f in findings) else 0)
 
 
@@ -90,15 +115,9 @@ def scan(
 def eval_(
     model: Model = DEFAULT_MODEL,
     push_only: Annotated[bool, typer.Option("--push-only", help="Only upload dataset and prompt")] = False,
-    triage: Annotated[bool, typer.Option("--triage", help="Score Jev role triage instead (no Langfuse)")] = False,
-    threshold: Annotated[float, typer.Option(help="Triage gate threshold")] = 0.2,
 ) -> None:
     """Score the LLM extractor on the corpus labels in Langfuse."""
-    from crosskill.evals import run, triage_report
-
-    if triage:
-        typer.echo(triage_report(threshold))
-        return
+    from crosskill.evals import run
 
     typer.echo(run(model, push_only))
 
@@ -123,42 +142,18 @@ def guard_init(
         typer.echo(f"  {p['ltl']}  ({p['rule']} via {' → '.join(p['path'])})")
 
 
-@app.command("daily")
-def daily_(
-    state: Annotated[Path, typer.Option(help="State directory: checkpoints, ledger, cursor, caches")],
-    feed: Annotated[Path, typer.Option(help="Feed directory the advisories are written to")] = Path("feed"),
-    max_usd: Annotated[float, typer.Option(help="LLM and Jev spend cap for this run")] = 0.5,
-    max_skills: Annotated[int, typer.Option(help="Most new skills checked this run")] = 50,
-    max_minutes: Annotated[float, typer.Option(
-        help="Wall-clock limit: no new skill starts after it (keep it under the job timeout)")] = 45,
-    dry_run: Annotated[bool, typer.Option(
-        "--dry-run", help="In-memory GitHub and a copy of --state and --feed (the LLM cache and "
-        "downloads are shared): print candidates instead of opening issues")] = False,
-    model: Model = DEFAULT_MODEL,
+@app.command("publish-report", hidden=True)
+def publish_report(
+    body: Annotated[Path, typer.Argument(help="File with the issue body")],
+    issue: Annotated[str, typer.Option(help="URL of the approved issue")],
+    feed_dir: Annotated[Path, typer.Option("--feed", help="Feed directory")] = Path("feed"),
 ) -> None:
-    """Check new ClawHub skills and hold each candidate for an approve/reject label."""
-    from crosskill.daily import run
-    from crosskill.github import GitHub, MemoryGitHub
+    """Publish an approved report issue to the feed (run by the publish workflow); prints its id."""
+    from crosskill import feed
 
-    need_key(False)
-    if not dry_run:
-        typer.echo(run(state, feed, GitHub.from_env(), max_usd, max_skills, model, max_minutes))
-        return
-    gh = MemoryGitHub()
-    # A dry run never writes the real ledger, cursor, checkpoints or feed, but shares the paid
-    # LLM/Jev cache and the downloaded skills, so a second dry run does not pay again.
-    shared = ("cache", "skills")
-    with tempfile.TemporaryDirectory() as tmp:
-        copies = []
-        for src, name in ((state, "state"), (feed, "feed")):
-            copies.append(Path(tmp) / name)
-            if src.exists():
-                shutil.copytree(src, copies[-1], symlinks=True,
-                                ignore=shutil.ignore_patterns(*shared) if name == "state" else None)
-        copies[0].mkdir(exist_ok=True)
-        for sub in shared:
-            (state / sub).mkdir(parents=True, exist_ok=True)
-            (copies[0] / sub).symlink_to((state / sub).resolve(), target_is_directory=True)
-        typer.echo(run(copies[0], copies[1], gh, max_usd, max_skills, model, max_minutes))
-    for issue in gh.issues.values():
-        typer.echo(f"\n=== {issue['title']}\n\n{issue['body']}")
+    try:
+        adv = feed.parse(body.read_text())
+    except ValueError as e:
+        typer.echo(f"not a valid crosskill report: {e}", err=True)
+        raise typer.Exit(code=2) from e
+    typer.echo(feed.publish(feed_dir, adv, issue))

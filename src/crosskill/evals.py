@@ -6,12 +6,9 @@ arbitrary execution.
 """
 
 import json
-import statistics
-import time
 from pathlib import Path
 from urllib.parse import urlparse
 
-from crosskill import triage
 from crosskill.extract import ARBITRARY, is_private, is_secret
 from crosskill.llm import PROMPT, facts_for
 
@@ -105,32 +102,3 @@ def run(model: str, push_only: bool = False) -> str:
         metadata={"model": model, "prompt_version": str(prompt.version)})
     lf.flush()
     return result.format()
-
-
-def role_labels(facts: list[dict]) -> dict[str, bool]:
-    """Which of the four triage roles the labeled facts of a skill make true."""
-    ks = {k for k in map(norm, facts) if relevant(*k)}
-    kinds = {k for k, _ in ks}
-    return {"reads_sensitive": bool(kinds & {"reads", "writes"}), "sends_out": "egress" in kinds,
-            "untrusted_input": "untrusted" in kinds, "runs_any_code": "executes" in kinds}
-
-
-def triage_report(threshold: float = 0.2, roles=triage.roles) -> str:
-    """Per-role precision and recall at 0.5, recall of risky skills at the gate threshold, cost, latency."""
-    rows, lat = [], []
-    spent = triage.spent_usd
-    for item in items():
-        t = time.time()
-        rows.append((role_labels(item["expected_output"]["facts"]), roles(item["input"]["text"])))
-        lat.append(time.time() - t)
-    out = [f"{len(rows)} skills, gate threshold {threshold}"]
-    for role in triage.ROLES:
-        tp = sum(1 for lab, got in rows if lab[role] and got[role] >= 0.5)
-        fp = sum(1 for lab, got in rows if not lab[role] and got[role] >= 0.5)
-        fn = sum(1 for lab, got in rows if lab[role] and got[role] < 0.5)
-        out.append(f"{role:16} P {ratio(tp, tp + fp):.2f}  R {ratio(tp, tp + fn):.2f}  (tp {tp} fp {fp} fn {fn})")
-    risky = [got for lab, got in rows if any(lab.values())]
-    kept = sum(triage.passes(got, threshold) for got in risky)
-    out.append(f"risky-skill recall {ratio(kept, len(risky)):.2f}  ({kept}/{len(risky)} pass the gate)")
-    out.append(f"cost ${triage.spent_usd - spent:.4f}, latency median {statistics.median(lat):.2f}s max {max(lat):.2f}s")
-    return "\n".join(out)

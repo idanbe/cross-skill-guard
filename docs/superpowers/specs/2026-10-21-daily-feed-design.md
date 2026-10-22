@@ -1,5 +1,10 @@
 # Stage 5: the daily feed (design)
 
+> **Superseded (2026-10-22).** The daily ClawHub scan was dropped as not economical (two local
+> dry runs spent $2.70 warming up the popular set without checking a new skill). crosskill
+> stays a local tool; users share findings from `crosskill scan` as issues the owner approves
+> (`src/crosskill/feed.py`, `.github/workflows/publish.yml`).
+
 ## Intent
 
 `crosskill scan` protects one installation. Stage 5 looks at the public skill ecosystem: every day

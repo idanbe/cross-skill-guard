@@ -17,16 +17,17 @@ install). Stage 2 done. Evals per prompt version (P / R, cost per corpus run):
 `deepseek/deepseek-v4.1-flash` v1 0.83 / 0.96, v2 0.96 / 0.96, $0.03; `deepseek/deepseek-v4-pro`
 v1 0.75 / 0.86, v2 0.88 / 0.88, $0.23. With v2 + flash the scan gives exactly the expected
 findings on all 77 installs (static alone flags 21/24 toxic), 0 false findings on clean. OpenRouter models that reject `temperature` (Sonnet
-5.5, GPT-5.6) fail under `require_parameters`. The extractor now asks for low reasoning effort (`llm.REASONING`, part of the cache key): flash v2 0.92 / 0.92, $0.02; reasoning off 0.76 / 0.64; a reasoning token cap is ignored by the provider and long skills ran out of tokens. Jev role triage (`crosskill eval --triage`, 92 skills, $0.002): per-role P/R at 0.5 are reads 0.68/0.93, sends 1.00/0.90, untrusted 0.89/0.85, code 0.40/0.80; risky-skill recall at threshold 0.2 is 46/46. Stage 3: `crosskill guard`
+5.5, GPT-5.6) fail under `require_parameters`. The extractor now asks for low reasoning effort (`llm.REASONING`, part of the cache key): flash v2 0.92 / 0.92, $0.02; reasoning off 0.76 / 0.64; a reasoning token cap is ignored by the provider and long skills ran out of tokens. Stage 3: `crosskill guard`
 (templates, automata, hooks, plugin) blocks the demo flow in real Claude Code, ~25 ms per hook
 call; an armed egress property turns the network off for later Bash commands (proxy env vars to a
 closed port, via CLAUDE_ENV_FILE) instead of the plan's CONNECT proxy (proxy-aware tools only;
 Node before 22.21 ignores it); its week of own use with no false blocks is still open. Stage 4 done: `--policy`
 (Rego, local `opa eval`) decides block/warn/ignore per finding; strict and permissive examples in
-`policies/`, `opa test` runs in CI. Stage 5 built, awaiting its first live runs: `crosskill daily`
-(LangGraph threads held for an `approve`/`reject` issue label, ClawHub source, Jev gate, $0.50
-per-run cap, 45-minute deadline) publishes to `feed/`, and `crosskill scan` prints possible
-matches against it.
+`policies/`, `opa test` runs in CI. Stage 5 changed: the daily ClawHub scan (LangGraph, Jev) was dropped as not
+economical (two dry runs spent $2.70 warming up 200 popular skills without checking a new
+one). crosskill stays local: `crosskill scan` offers to share each finding as a pre-filled
+GitHub issue; the owner's `approve` label publishes it to `feed/`, and scans print possible
+matches against the feed.
 
 Langfuse is the local Docker stack from the triage-guard project (http://localhost:3000, project
 `cross-skill-guard`); `.env` holds its keys and is gitignored.
@@ -54,11 +55,11 @@ claude --plugin-dir plugin  # load the guard hooks (they run `crosskill-guard`, 
 
 ## Architecture
 
-Pipeline, one engine shared by the scan, the runtime guard and the daily feed:
+Pipeline, one engine shared by the scan, the runtime guard and the shared-findings feed:
 extractors (static: `ast`, bashlex, SKILL.md frontmatter, `.mcp.json`, `settings.json`; LLM in
 stage 2) → facts → clingo rules (`tainted` → `toxic`, with the path carried inside each atom) →
 findings with a file:line proof chain → terminal/SARIF output. Later stages add an OPA policy,
-LTL runtime hooks and a LangGraph daily feed on top of these findings.
+LTL runtime hooks and user-shared advisories on top of these findings.
 
 - `docs/facts.md` is the contract between extractors and rules. Facts are the only input to
   clingo. Every fact needs provenance `{file, line, extractor, quote?}`, and LLM facts must include
@@ -73,17 +74,13 @@ LTL runtime hooks and a LangGraph daily feed on top of these findings.
   into `Grant`s (quote must be in the file; `rule` lets `deny` apply).
 - `src/crosskill/evals.py`: fact-level precision/recall against `expected_facts.json`, run as a
   Langfuse experiment (`crosskill eval`).
-- Daily feed (stage 5, `crosskill daily`, `.github/workflows/daily.yml`): `triage.py` (Jev
-  decisions API gate, threshold 0.2; `crosskill eval --triage`), `sources.py` (ClawHub listing and
-  download, oldest first, safe extraction), `candidates.py` (`check` with keep/rank on scan, key,
-  score, advisory render), `github.py` (`GitHub` issues client, `MemoryGitHub` for tests; repo and
-  token from `CROSSKILL_ISSUES_REPO`/`CROSSKILL_ISSUES_TOKEN`, else `GITHUB_*`), `daily.py`
-  (LangGraph graph open_issue → wait (interrupt) → publish | close, ledger, cursor, budget gate,
-  rolling pool), `known.py` (scan's "possible match" lines; `--offline`/`CROSSKILL_OFFLINE`).
-  `pipeline/popular-mcp.json` lists popular MCP servers. State dir (the `data` branch in CI):
-  `checkpoints.sqlite`, `ledger.json`, `cursor.json`, `popular.json`, `cache/` (LLM and Jev
-  answers). `skills/` (downloaded third-party skills) is never committed: the workflow keeps it in
-  `actions/cache` and gitignores it on `data`. `feed/` on `main` holds `advisories.json` and an index.
+- Shared findings (`src/crosskill/feed.py`): `report` turns a local finding into a draft
+  advisory (skills and MCP servers only, no quotes), `issue_url` pre-fills a GitHub issue the
+  user submits. `.github/workflows/publish.yml` runs `crosskill publish-report` on an issue
+  labeled `approve`: `parse` validates the untrusted JSON in the body and rebuilds key and
+  title, `publish` adds `feed/CK-<year>-NNNN.md` and `feed/advisories.json` (idempotent by
+  key). `known.py` gives scan its "possible match" lines (`--offline`/`CROSSKILL_OFFLINE`).
+  The stage 5 daily-feed design and plan in `docs/superpowers/` are marked superseded.
 - `src/crosskill/scan.py`: grounds and solves, keeps the shortest path per finding, renders the
   file:line chain as text or SARIF. `src/crosskill/cli.py`: typer app.
 - `src/crosskill/guard.py`: runtime guard. Each finding fills an LTL template (`G(a → G ¬b)` for

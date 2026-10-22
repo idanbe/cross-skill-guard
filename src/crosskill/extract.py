@@ -6,7 +6,6 @@ Classification follows the conventions in docs/facts.md.
 import ast
 import json
 import re
-from collections.abc import Callable
 from dataclasses import dataclass
 from fnmatch import fnmatch
 from pathlib import Path
@@ -282,18 +281,15 @@ def settings_grants(path: Path, root: Path) -> tuple[list[Grant], list[str]]:
     return grants, perms.get("deny", [])
 
 
-def extract(root: Path, model: str | None = None,
-            llm_for: Callable[[str], bool] | None = None) -> list[Grant]:
+def extract(root: Path, model: str | None = None) -> list[Grant]:
     """All grants in an install. Reads the corpus layout and the `.claude/` layout.
 
-    With a model, the LLM extractor adds facts from SKILL.md prose and JS/TS scripts, for
-    every skill directory name `llm_for` accepts (all of them when it is None).
+    With a model, the LLM extractor adds facts from SKILL.md prose and JS/TS scripts.
     """
     grants, denies = [], []
     for base in (root, root / ".claude"):
         for skill_md in sorted(base.glob("skills/*/SKILL.md")):
-            use = model if llm_for is None or llm_for(skill_md.parent.name) else None
-            grants += skill_grants(skill_md, root, use)
+            grants += skill_grants(skill_md, root, model)
         for name in ("settings.json", "settings.local.json"):
             if (base / name).exists():
                 g, d = settings_grants(base / name, root)

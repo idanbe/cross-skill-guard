@@ -1,5 +1,10 @@
 # Daily Feed Implementation Plan
 
+> **Superseded (2026-10-22).** The daily ClawHub scan was dropped as not economical (two local
+> dry runs spent $2.70 warming up the popular set without checking a new skill). crosskill
+> stays a local tool; users share findings from `crosskill scan` as issues the owner approves
+> (`src/crosskill/feed.py`, `.github/workflows/publish.yml`).
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** A daily GitHub Actions run that finds toxic flows created by new public skills, opens one issue per candidate, and publishes approved candidates as advisories in `feed/`, which `crosskill scan` then matches against local installs.

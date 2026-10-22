@@ -126,30 +126,20 @@ after a secret read. For a hard network boundary, also turn on Claude Code's
 [sandbox](https://code.claude.com/docs/en/sandboxing). The scan reads the project's settings, not
 `~/.claude`.
 
-## Daily feed
+## Share a finding
 
-A GitHub Actions workflow (`.github/workflows/daily.yml`, 06:17 UTC) checks new ClawHub skills
-against a set of popular skills and MCP servers, and looks for toxic combinations between them.
-ClawHub is the only source for now.
+When `crosskill scan` finds a toxic flow in a terminal, it asks whether to share it. Each finding
+you share opens as a pre-filled GitHub issue in your browser: you see exactly what would be sent,
+edit or delete anything private, and submit it yourself (no token needed). `--report` prints the
+links without asking; outside a terminal (CI) it never asks.
 
-```
-crosskill daily --state DIR --feed DIR [--max-usd 0.5] [--max-skills 50] [--max-minutes 45] [--dry-run]
-```
-
-- Spend is capped per run: each run, scheduled or dispatched by hand, gets its own $0.50
-  (`--max-usd`); the popular set warms up over the first ~2 runs, before new skills get checked.
-  A run also stops starting new skills after `--max-minutes`; unchecked skills wait for the next run.
-- Candidates appear as GitHub issues labeled `crosskill-candidate`. Add `approve` to publish one
-  to `feed/advisories.json`, or `reject` to drop it for good.
-- Run state (checkpoints, ledger, cursor, caches) lives on the `data` branch. Downloaded skills
-  are never committed; they are kept in the Actions cache.
-- To keep candidate issues private, set the `CROSSKILL_ISSUES_REPO` (`owner/name`, a private
-  repository) and `CROSSKILL_ISSUES_TOKEN` secrets; without them, issues go to this repository.
-  Either way the public `data` branch holds `ledger.json` and `checkpoints.sqlite`, which
-  include unapproved and rejected candidates.
-- `crosskill scan` prints "possible match" lines for installed skills that appear in the feed
-  (`--offline` or `CROSSKILL_OFFLINE` skips the lookup).
-- `crosskill eval --triage` scores the Jev triage gate.
+- A report names the skills and MCP servers in the flow and its file:line proof chain. It leaves
+  out quotes from your files and permission rules, which are your own config, not something
+  another user installs.
+- Once the maintainer adds the `approve` label, the issue is published to `feed/` as an advisory
+  (`CK-<year>-NNNN`) and closed.
+- `crosskill scan` prints "possible match" lines when your install has every component of a
+  published advisory (`--offline` or `CROSSKILL_OFFLINE` skips the lookup).
 
 ## Develop
 
