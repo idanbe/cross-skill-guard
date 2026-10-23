@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="452" viewBox="0 0 880 452" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <defs>
+    <style>
+      .label { font-size: 16px; font-weight: 600; fill: #1f2328; }
+      .rule { font-size: 13px; fill: #59636e; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+      .box { fill: #f6f8fa; stroke: #d0d7de; stroke-width: 1.5; }
+      .name { font-size: 15px; font-weight: 600; fill: #1f2328; }
+      .does { font-size: 13px; fill: #1f2328; }
+      .tag { font-size: 12px; fill: #59636e; }
+      .plus { font-size: 24px; fill: #59636e; }
+      .bad { fill: #ffebe9; stroke: #cf222e; stroke-width: 1.5; }
+      .badtext { font-size: 14px; font-weight: 600; fill: #a40e26; }
+      .sep { stroke: #d8dee4; stroke-width: 1; }
+    </style>
+  </defs>
+  <rect x="1" y="1" width="878" height="450" rx="12" fill="#ffffff" stroke="#d0d7de"/>
+
+  <!-- 1. secret_exfiltration (corpus/toxic/001-secret-to-webhook) -->
+  <text x="24" y="40" class="label">1. Secret leak</text>
+  <text x="150" y="40" class="rule">secret_exfiltration</text>
+  <rect x="24" y="56" width="230" height="80" rx="8" class="box"/>
+  <text x="40" y="82" class="name">env-reader</text>
+  <text x="40" y="104" class="does">reads the project's .env file</text>
+  <text x="40" y="124" class="tag">touches a secret</text>
+  <text x="272" y="104" class="plus" text-anchor="middle">+</text>
+  <rect x="290" y="56" width="230" height="80" rx="8" class="box"/>
+  <text x="306" y="82" class="name">notify-webhook</text>
+  <text x="306" y="104" class="does">posts a summary to a webhook</text>
+  <text x="306" y="124" class="tag">sends data out</text>
+  <line x1="532" y1="96" x2="600" y2="96" stroke="#cf222e" stroke-width="2"/><path d="M598,90 L610,96 L598,102 z" fill="#cf222e"/>
+  <rect x="620" y="56" width="236" height="80" rx="8" class="bad"/>
+  <text x="738" y="90" class="badtext" text-anchor="middle">Your .env secrets can be</text>
+  <text x="738" y="110" class="badtext" text-anchor="middle">posted to someone's server</text>
+  <line x1="24" y1="156" x2="856" y2="156" class="sep"/>
+
+  <!-- 2. untrusted_to_execution (corpus/toxic/002-untrusted-to-shell) -->
+  <text x="24" y="188" class="label">2. A web page runs commands</text>
+  <text x="290" y="188" class="rule">untrusted_to_execution</text>
+  <rect x="24" y="204" width="496" height="80" rx="8" class="box"/>
+  <text x="40" y="230" class="name">web-summarizer</text>
+  <text x="40" y="252" class="does">fetches a URL and follows any setup steps found on the page</text>
+  <text x="40" y="272" class="tag">reads untrusted input, runs commands</text>
+  <line x1="532" y1="244" x2="600" y2="244" stroke="#cf222e" stroke-width="2"/><path d="M598,238 L610,244 L598,250 z" fill="#cf222e"/>
+  <rect x="620" y="204" width="236" height="80" rx="8" class="bad"/>
+  <text x="738" y="238" class="badtext" text-anchor="middle">Whoever writes the page</text>
+  <text x="738" y="258" class="badtext" text-anchor="middle">runs code on your machine</text>
+  <line x1="24" y1="304" x2="856" y2="304" class="sep"/>
+
+  <!-- 3. lethal_trifecta (corpus/toxic/003-trifecta-mcp) -->
+  <text x="24" y="336" class="label">3. Lethal trifecta</text>
+  <text x="178" y="336" class="rule">lethal_trifecta</text>
+  <rect x="24" y="352" width="150" height="80" rx="8" class="box"/>
+  <text x="38" y="378" class="name">mail-triage</text>
+  <text x="38" y="400" class="does">reads incoming mail</text>
+  <text x="38" y="420" class="tag">untrusted input</text>
+  <text x="185" y="400" class="plus" text-anchor="middle">+</text>
+  <rect x="197" y="352" width="150" height="80" rx="8" class="box"/>
+  <text x="211" y="378" class="name">files (MCP)</text>
+  <text x="211" y="400" class="does">can read ~/work</text>
+  <text x="211" y="420" class="tag">private data</text>
+  <text x="358" y="400" class="plus" text-anchor="middle">+</text>
+  <rect x="370" y="352" width="150" height="80" rx="8" class="box"/>
+  <text x="384" y="378" class="name">mail-triage</text>
+  <text x="384" y="400" class="does">replies to senders</text>
+  <text x="384" y="420" class="tag">sends data out</text>
+  <line x1="532" y1="392" x2="600" y2="392" stroke="#cf222e" stroke-width="2"/><path d="M598,386 L610,392 L598,398 z" fill="#cf222e"/>
+  <rect x="620" y="352" width="236" height="80" rx="8" class="bad"/>
+  <text x="738" y="386" class="badtext" text-anchor="middle">One email can get your</text>
+  <text x="738" y="406" class="badtext" text-anchor="middle">work files mailed out</text>
+</svg>

