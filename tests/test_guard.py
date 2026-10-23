@@ -147,6 +147,22 @@ def test_home_rule_arms_only_on_secret_reads(tmp_path, monkeypatch) -> None:
     assert call("Bash", command="curl https://x.invalid")
 
 
+def test_home_rule_covers_secrets_inside_the_project(tmp_path, monkeypatch) -> None:
+    # Paths in the project are written relative to it (`.env`), but `Read(~/**)` covers them too.
+    monkeypatch.setattr(guard, "STATE", tmp_path / "state")
+    monkeypatch.setenv("HOME", str(tmp_path))
+    root = tmp_path / "project"
+    (root / ".claude").mkdir(parents=True)
+    rules = {"permissions": {"allow": [f"Read(/{tmp_path}/**)", "Bash(curl *)"]}}
+    (root / ".claude" / "settings.json").write_text(json.dumps(rules))
+    assert guard.init(root)["properties"][0]["ltl"] == "G(read_secret(~/**) → G ¬egress(*))"
+    ev = {"session_id": "s", "cwd": str(root)}
+    read = {"tool_name": "Read", "tool_input": {"file_path": str(root / ".env")}}
+    guard.hook(ev | read | {"hook_event_name": "PostToolUse"})
+    curl = {"tool_name": "Bash", "tool_input": {"command": "curl https://x.invalid"}}
+    assert guard.hook(ev | curl | {"hook_event_name": "PreToolUse"})
+
+
 def test_secret_read_turns_bash_network_off(run, tmp_path, monkeypatch) -> None:
     root, _ = run("004-aws-creds-to-curl")
     env_file = tmp_path / "env.sh"

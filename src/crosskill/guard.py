@@ -191,6 +191,18 @@ def with_secrets(evs: list, secrets: list[str]) -> list:
         fnmatch(f, a) or f.startswith(a.rstrip("/") + "/") for f in secrets)]
 
 
+def in_home(evs: list, root: Path) -> list:
+    """Add the `~` form of project paths: `rel` writes them relative to the project, but a
+    rule like `Read(~/**)` covers them too when the project is under the home directory."""
+    home, root = os.path.expanduser("~"), os.path.abspath(root)
+    if not root.startswith(home.rstrip("/") + "/"):
+        return evs
+    base = "~/" + os.path.relpath(root, home)
+    alias = [(k, os.path.normpath(f"{base}/{p}")) for k, p in evs
+             if k in ("read", "read_secret") and not p.startswith(("~", "/", "env:"))]
+    return evs + [e for e in alias if e[1].startswith("~/")]
+
+
 def matches(event: tuple[str, str], letter: list[str]) -> bool:
     (kind, got), (want_kind, want) = event, letter
     if kind != want_kind:
@@ -268,7 +280,7 @@ def hook(event: dict) -> dict | None:
     except FileNotFoundError:
         state = {}
     tool, args = event.get("tool_name", ""), event.get("tool_input") or {}
-    evs = with_secrets(events(tool, args, root, guard["mcp"]), guard["secrets"])
+    evs = in_home(with_secrets(events(tool, args, root, guard["mcp"]), guard["secrets"]), root)
     new, reason = step(guard, state, evs, describe(tool, args, root))
     if name == "PreToolUse":
         return reason and {"hookSpecificOutput": {"hookEventName": "PreToolUse",
