@@ -95,6 +95,39 @@ servers, and Python and shell scripts. The LLM extractor also reads SKILL.md pro
 scripts, and every fact it returns must quote the file. Results are cached, so you never pay
 twice for the same text. clingo rules then search the facts for the three kinds of flow.
 
+## Audit permissions
+
+A `Bash` allow rule in `settings.json` auto-approves a whole family of commands, and the Claude
+Code matcher is explicit that such a rule "isn't a security boundary around the program": the same
+dangerous program reached a different way slips past. `crosskill audit-permissions` finds those
+bypasses. It models the allow and deny rules as Z3 string constraints, enumerates the documented
+invocation forms (absolute path, `sh -c`, `git -c`, the `devbox`/`mise`/`docker`/`direnv` runners,
+`npx`) over the dangerous programs, and verifies each candidate with bashlex before reporting it.
+
+```
+crosskill audit-permissions path/to/project   # exit 1 when a bypass is found, 0 otherwise
+```
+
+A broad rule like `Bash(docker exec *)` (docker runs whatever you hand it inside the container) prints:
+
+```
+12 permission bypass(es)
+
+Bash(docker exec *) reaches curl  [egress]     .claude/settings.json:155
+Bash(docker exec *) reaches sh    [executes]   .claude/settings.json:155
+Bash(docker exec *) reaches python [executes]  .claude/settings.json:155
+... (one line per dangerous program the rule lets through)
+```
+
+Each line is the rule that approved the command, the program it really runs, the capability, and
+the `settings.json` line. Narrow the rule to the exact command you need, or add a `deny`, and the
+bypasses disappear. A tightly pinned rule set prints `no bypasses found` — true only within the
+modeled forms, not a proof the rules are safe.
+
+`crosskill scan --audit path/to/project` folds the verified bypasses into the toxic-path search, so
+an over-broad rule can complete a flow (a skill reads `.env`, the bypass supplies the egress) that
+the scan alone would miss. It is opt-in: a plain scan never runs the audit.
+
 ## Decide what to do with each finding
 
 A Rego policy decides whether each finding blocks, warns or is ignored, and gives a reason. It
