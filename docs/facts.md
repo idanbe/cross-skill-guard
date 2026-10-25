@@ -35,7 +35,7 @@ server key, `hook:<Event>`, or permission rule text (for example `WebFetch`).
 
 Every fact carries `source`: `{file, line, extractor, quote?}`.
 `extractor` is one of `static`, `llm`, `manual`, `z3`. `z3` marks a verified Bash allow-rule bypass
-found by `crosskill audit-permissions`. LLM facts must include a `quote` from the text.
+found by `crosskill audit-permissions` or `scan --audit`. LLM facts must include a `quote` from the text.
 Explanations in stage 1 are built from these records, so a fact without provenance is invalid.
 
 ## Classification conventions
@@ -100,11 +100,15 @@ execution. Evals score the same subset (`src/crosskill/evals.py`).
   permitted-but-dangerous program, verifies each with bashlex, and emits `z3` grants.
   `scan --audit` folds them into the toxic-path search.
 - Known limitations of the audit model (`audit.py`):
-  - Option words that take a separate value are not skipped in runner forms, so
-    `docker exec -u root c <cmd>` is missed.
-  - Deny rules are matched by substring/glob containment. This can over-deny, and so under-report
-    wrapper or path bypasses of a deny rule. The model errs toward false negatives, never false
-    positives.
+  - `verify()` does not skip option words that take a separate value in runner forms, so it
+    returns None for `docker exec -u root c <cmd>`. This is latent: `audit-permissions` output is
+    unaffected today, because `find_candidates` generates only the fixed `BYPASS_FORMS`, and none
+    of them contains option words. It would matter only if the forms grow option-bearing templates.
+  - Deny rules are matched by substring/glob containment (a command is denied if any part of it
+    matches the glob). This over-denies, so the deny side errs toward false negatives: wrapper or
+    path bypasses of a deny rule can go unreported. The deny side does not produce false
+    positives. On the allow side, a reported bypass is only as sound as the Z3 model of the
+    documented Claude Code Bash matcher, and `verify()` inspects only the candidate command string.
 - Named env vars such as `BAIDU_API_KEY` are not secrets today: 10+ real skills read their own
   API key and send it to their own provider, which is intended. Flagging them needs a notion of
   the key's own domain.

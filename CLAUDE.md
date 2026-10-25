@@ -27,7 +27,7 @@ Node before 22.21 ignores it); its week of own use with no false blocks is still
 economical (two dry runs spent $2.70 warming up 200 popular skills without checking a new
 one). crosskill stays local: `crosskill scan` offers to share each finding as a pre-filled
 GitHub issue; the owner's `approve` label publishes it to `feed/`, and scans print possible
-matches against the feed. Stage 6: `crosskill audit-permissions` (Z3 models the Bash allow/deny
+matches against the feed. Stage 6 done: `crosskill audit-permissions` (Z3 models the Bash allow/deny
 matcher, enumerates bypass forms, verifies with bashlex, returns `z3` grants; `scan --audit` folds
 them into the toxic-path search).
 
@@ -51,6 +51,8 @@ crosskill eval --push-only   # upload labels (dataset) and prompt.md to Langfuse
 crosskill eval --model M     # run the extractor on the dataset, scores per prompt version
 crosskill guard init --no-llm PATH   # write PATH/.claude/crosskill-guard.json (properties + automata)
 crosskill scan --no-llm --policy policies/strict/policy.rego --data policies/data.json PATH
+crosskill audit-permissions PATH   # Bash allow-rule bypasses (Z3)
+crosskill scan --audit PATH        # include permission bypasses in the scan
 opa test policies/strict     # each policy in its own dir: both use `package crosskill`
 claude --plugin-dir plugin  # load the guard hooks (they run `crosskill-guard`, which must be on PATH)
 ```
