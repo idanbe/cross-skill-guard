@@ -114,6 +114,19 @@ def scan(
     raise typer.Exit(code=1 if any(f.get("action", "block") == "block" for f in findings) else 0)
 
 
+@app.command("audit-permissions")
+def audit_permissions(
+    path: Annotated[Path, typer.Argument(help="Installation directory to audit")] = Path("."),
+) -> None:
+    """Find Bash allow rules that let a dangerous program run behind a wrapper. Exits 1 when any do."""
+    from crosskill.audit import audit
+    from crosskill.audit import to_text as audit_text
+
+    grants = audit(path)
+    typer.echo(audit_text(grants))
+    raise typer.Exit(code=1 if grants else 0)
+
+
 @app.command("eval")
 def eval_(
     model: Model = DEFAULT_MODEL,

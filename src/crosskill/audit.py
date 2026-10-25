@@ -2,6 +2,7 @@
 
 import itertools
 import os
+import re
 from collections.abc import Callable, Iterator
 from pathlib import Path
 
@@ -160,3 +161,19 @@ def audit(root: Path) -> list[Grant]:
             Grant(rule, c[0], c[1], src.file, src.line, quote, rule, True, extractor="z3")
             for c in bash_caps(prog)]
     return [g for grants in found.values() for g in grants]
+
+
+def to_text(grants: list[Grant]) -> str:
+    """One line per distinct bypass: the rule, the program it reaches, the kind and file:line."""
+    if not grants:
+        return "no bypasses found"
+    lines: list[str] = []
+    seen: set[tuple] = set()
+    for g in grants:
+        m = re.search(r"\[bypass: ([^\]]+)\]$", g.quote)  # egress grants keep the program here
+        prog = m[1] if m else g.arg
+        key = (g.comp, prog, g.kind, g.file, g.line)
+        if key not in seen:
+            seen.add(key)
+            lines.append(f"{g.comp} reaches {prog}  [{g.kind}]  {g.file}:{g.line}")
+    return "\n".join([f"{len(lines)} permission bypass(es)", "", *lines])

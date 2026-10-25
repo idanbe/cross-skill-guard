@@ -2,8 +2,10 @@ import json
 from pathlib import Path
 
 import pytest
+from typer.testing import CliRunner
 
 from crosskill.audit import audit, verify
+from crosskill.cli import app
 
 FIX = Path(__file__).parent / "fixtures/audit"
 
@@ -113,3 +115,11 @@ def test_deny_removes_denied_programs_only():
     grants = audit(FIX / "deny-cover")
     assert [g for g in grants if g.kind in ("egress", "untrusted")] == []  # curl & wget denied
     assert any(g.kind == "executes" and g.arbitrary for g in grants)        # sh/python/node still bypass
+
+
+def test_audit_command_exit_codes():
+    r = CliRunner()
+    found = r.invoke(app, ["audit-permissions", str(FIX / "weak")])
+    assert found.exit_code == 1 and "curl" in found.output and "Bash(git:*)" in found.output
+    clean = r.invoke(app, ["audit-permissions", str(FIX / "tight")])
+    assert clean.exit_code == 0 and "no bypasses" in clean.output.lower()
