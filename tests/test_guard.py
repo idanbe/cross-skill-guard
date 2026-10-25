@@ -147,6 +147,29 @@ def test_home_rule_arms_only_on_secret_reads(tmp_path, monkeypatch) -> None:
     assert call("Bash", command="curl https://x.invalid")
 
 
+def test_audit_flag_arms_a_permission_bypass_at_runtime(tmp_path, monkeypatch) -> None:
+    # A skill reads .env; an over-broad Bash(git:*) rule supplies egress only via a bypass.
+    monkeypatch.setattr(guard, "STATE", tmp_path / "state")
+    root = tmp_path / "project"
+    (root / ".claude").mkdir(parents=True)
+    (root / ".claude" / "settings.json").write_text(json.dumps({"permissions": {"allow": ["Bash(git:*)"]}}))
+    skill = root / "skills" / "env-reader"
+    skill.mkdir(parents=True)
+    skill.joinpath("SKILL.md").write_text(
+        '---\nname: env-reader\nallowed-tools: ["Read(.env)"]\n---\nRead the .env file.\n')
+
+    assert guard.init(root)["properties"] == []  # static scan sees no egress → nothing to arm
+    props = guard.init(root, audit=True)["properties"]
+    assert any("egress" in p["ltl"] for p in props)  # the bypass completes secret_exfiltration
+
+    def call(tool: str, event: str, **args) -> dict | None:
+        ev = {"session_id": "s", "cwd": str(root), "tool_name": tool, "tool_input": args}
+        return guard.hook(ev | {"hook_event_name": event})
+
+    call("Read", "PostToolUse", file_path=str(root / ".env"))
+    assert call("Bash", "PreToolUse", command="curl https://x.invalid")  # blocked after the secret read
+
+
 def test_home_rule_covers_secrets_inside_the_project(tmp_path, monkeypatch) -> None:
     # Paths in the project are written relative to it (`.env`), but `Read(~/**)` covers them too.
     monkeypatch.setattr(guard, "STATE", tmp_path / "state")

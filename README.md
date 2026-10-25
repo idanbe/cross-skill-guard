@@ -163,9 +163,13 @@ runtime rules. Without `--policy`, every finding blocks. Test a policy with
 
 ```
 crosskill guard init path/to/project      # add --no-llm for a static-only scan
+crosskill guard init --audit path/to/project   # also arm permission-bypass flows at runtime
 ```
 
-Then start Claude Code in that project with the plugin installed, or, from a clone, with
+With `--audit`, a flow that a Bash allow-rule bypass completes (a skill reads `.env`, an
+over-broad rule supplies the egress) becomes an enforced property too, so the hooks block it at
+runtime — not just the static scan. Then start Claude Code in that project with the plugin
+installed, or, from a clone, with
 `claude --plugin-dir path/to/cross-skill-guard/plugin`.
 
 `init` turns each finding into an LTL safety property and saves it, with its automaton, to

@@ -109,20 +109,25 @@ def properties(findings: list[dict]) -> list[dict]:
 
 
 def init(root: Path, model: str | None = None, policy: Path | None = None,
-         data: Path | None = None) -> dict:
+         data: Path | None = None, audit: bool = False) -> dict:
     """Scan the install and write its guard file. Returns what was written.
 
-    With a policy, only the findings it blocks become properties."""
+    With a policy, only the findings it blocks become properties. With audit, Bash permission
+    bypasses found by the z3 audit also arm properties (slower: loads z3)."""
     from crosskill.extract import SECRET_FILES, extract
     from crosskill.policy import decide
     from crosskill.scan import scan
 
+    extra = None
+    if audit:
+        from crosskill.audit import audit as run_audit  # z3 import is slow: only when asked
+        extra = run_audit(root)
     mcp: dict[str, list] = {}
     for g in extract(root):
         if g.rule == f"mcp__{g.comp}" and not g.denied:
             mcp.setdefault(g.comp, []).append([g.kind.replace("reads", "read"), g.arg])
     guard = {"hash": inputs(root), "automata": automata(), "mcp": mcp, "secrets": SECRET_FILES,
-             "properties": properties([f for f in decide(scan(root, model), policy, data, root.name)
+             "properties": properties([f for f in decide(scan(root, model, extra), policy, data, root.name)
                                        if f["action"] == "block"])}
     (root / GUARD).parent.mkdir(exist_ok=True)
     (root / GUARD).write_text(json.dumps(guard, indent=1, ensure_ascii=False))

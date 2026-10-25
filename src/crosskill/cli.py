@@ -154,14 +154,17 @@ def guard_init(
     model: Model = DEFAULT_MODEL,
     policy: Policy = None,
     data: Data = None,
+    audit: Annotated[bool, typer.Option(
+        "--audit", help="Also arm Bash permission bypasses found by the z3 audit (slower: loads z3)")] = False,
 ) -> None:
     """Scan the project and write .claude/crosskill-guard.json, the properties the hooks enforce.
 
-    With a policy, only the findings it blocks become properties."""
+    With a policy, only the findings it blocks become properties. With --audit, permission
+    bypasses also become enforced properties."""
     from crosskill.guard import GUARD, init
 
     need_key(no_llm)
-    guard = init(path, None if no_llm else model, policy, data)
+    guard = init(path, None if no_llm else model, policy, data, audit)
     typer.echo(f"{len(guard['properties'])} properties written to {path / GUARD}")
     for p in guard["properties"]:
         typer.echo(f"  {p['ltl']}  ({p['rule']} via {' → '.join(p['path'])})")

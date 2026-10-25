@@ -50,6 +50,7 @@ crosskill scan --no-llm --sarif corpus/toxic/020-two-findings  # static only, SA
 crosskill eval --push-only   # upload labels (dataset) and prompt.md to Langfuse
 crosskill eval --model M     # run the extractor on the dataset, scores per prompt version
 crosskill guard init --no-llm PATH   # write PATH/.claude/crosskill-guard.json (properties + automata)
+crosskill guard init --audit PATH    # also arm Bash permission-bypass flows (z3 audit) at runtime
 crosskill scan --no-llm --policy policies/strict/policy.rego --data policies/data.json PATH
 crosskill audit-permissions PATH   # Bash allow-rule bypasses (Z3)
 crosskill scan --audit PATH        # include permission bypasses in the scan
