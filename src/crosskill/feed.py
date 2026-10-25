@@ -143,6 +143,8 @@ def render(adv: dict) -> str:
                   ("That set of capabilities is risky for an agent, because one session can use "
                    "all of them in sequence without the user seeing a step in between. This page "
                    "describes what the component is able to do, not why it was written.")]
+    lines += ["", (f"If you maintain one of these components and think this advisory is wrong, open an "
+                   f"issue at https://github.com/{REPO}/issues and it will be reviewed.")]
     lines += ["", "## Proof chain (from the reporter's install)", ""]
     lines += [f"- `{c['where']}`: `{c['fact']}`" + (" (read by an LLM)" if c["extractor"] == "llm" else "")
               for c in adv["chain"]]

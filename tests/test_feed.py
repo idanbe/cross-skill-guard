@@ -71,7 +71,9 @@ def test_publish_is_idempotent_and_numbers_by_year(tmp_path: Path) -> None:
     assert feed.publish(tmp_path, a, "u2", d) == "CK-2026-0001"
     assert feed.publish(tmp_path, b, "u3", d) == "CK-2026-0002"
     assert len(json.loads((tmp_path / "advisories.json").read_text())) == 2
-    assert "This component can" in (tmp_path / "CK-2026-0002.md").read_text()
+    page = (tmp_path / "CK-2026-0002.md").read_text()
+    assert "This component can" in page
+    assert "think this advisory is wrong, open an issue" in page  # authors can dispute it
 
 
 @pytest.mark.parametrize("body", [
