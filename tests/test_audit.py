@@ -8,6 +8,7 @@ from typer.testing import CliRunner
 
 from crosskill.audit import audit, verify
 from crosskill.cli import app
+from crosskill.scan import scan as scan_fn
 
 FIX = Path(__file__).parent / "fixtures/audit"
 
@@ -137,3 +138,18 @@ def test_audit_import_keeps_z3_out_of_cli():
     # the lazy import is a binding constraint: z3 costs ~180 ms, so cli must not load it at import
     code = "import sys, crosskill.cli; sys.exit(0 if 'z3' not in sys.modules else 1)"
     assert subprocess.run([sys.executable, "-c", code], check=False).returncode == 0
+
+
+def test_scan_without_audit_misses_the_bypass():
+    assert scan_fn(FIX / "trifecta") == []  # static alone sees no flow
+
+
+def test_scan_with_audit_grants_completes_a_path():
+    findings = scan_fn(FIX / "trifecta", extra_grants=audit(FIX / "trifecta"))
+    assert any(f["rule"] in ("untrusted_to_execution", "lethal_trifecta", "secret_exfiltration")
+               for f in findings)
+
+
+def test_scan_audit_flag_wires_it():
+    r = CliRunner().invoke(app, ["scan", "--no-llm", "--offline", "--audit", str(FIX / "trifecta")])
+    assert r.exit_code == 1

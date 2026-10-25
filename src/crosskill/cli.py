@@ -96,13 +96,20 @@ def scan(
     offline: Annotated[bool, typer.Option("--offline", help="Skip the published-advisories lookup")] = False,
     report: Annotated[bool, typer.Option(
         "--report", help="Print a link to share each finding as a GitHub issue, without asking")] = False,
+    audit: Annotated[bool, typer.Option(
+        "--audit", help="Also add Bash permission bypasses found by the z3 audit (slower: loads z3)")] = False,
 ) -> None:
     """Scan an installation for toxic flows. Exits 1 when any finding blocks.
 
     In a terminal, it then asks whether to share the findings: each one opens as a pre-filled
     GitHub issue you review and submit yourself."""
     need_key(no_llm)
-    findings = run_scan(path, None if no_llm else model)
+    extra = None
+    if audit:
+        from crosskill.audit import audit as run_audit  # z3 import is slow: only when asked
+
+        extra = run_audit(path)
+    findings = run_scan(path, None if no_llm else model, extra_grants=extra)
     if policy:
         findings = decide(findings, policy, data, path.resolve().name)
     typer.echo(to_sarif(findings) if sarif else to_text(findings))
