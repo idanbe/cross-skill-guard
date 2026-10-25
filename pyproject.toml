@@ -7,10 +7,28 @@ name = "crosskill"
 version = "0.1.0"
 description = "Find dangerous combinations of skills, MCP servers and permissions"
 readme = "README.md"
-license = { text = "MIT" }
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.12"
+authors = [{ name = "Idan" }]
+keywords = ["claude-code", "security", "mcp", "agent-skills", "static-analysis", "clingo", "z3"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Security",
+    "Topic :: Software Development :: Quality Assurance",
+]
 # langfuse<5: SDK 5 posts score arrays to /api/public/scores, which the local v4.13 server rejects.
 dependencies = ["typer>=0.12", "clingo>=5.7", "bashlex>=0.18", "pyyaml>=6", "pydantic>=2", "openai>=3", "langfuse>=4.13,<5", "python-statemachine>=3", "z3-solver>=4.12"]
+
+[project.urls]
+Homepage = "https://github.com/idanbe/cross-skill-guard"
+Repository = "https://github.com/idanbe/cross-skill-guard"
+Issues = "https://github.com/idanbe/cross-skill-guard/issues"
+Advisories = "https://github.com/idanbe/cross-skill-guard/tree/main/feed"
 
 [project.optional-dependencies]
 dev = ["pytest>=8", "ruff>=0.5"]
@@ -18,6 +36,9 @@ dev = ["pytest>=8", "ruff>=0.5"]
 [project.scripts]
 crosskill = "crosskill.cli:app"
 crosskill-guard = "crosskill.guard:main"
+
+[tool.hatch.build.targets.sdist]
+exclude = [".superpowers"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/crosskill"]

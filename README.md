@@ -8,7 +8,7 @@ updates to a webhook. Installed in the same project, they give Claude a path fro
 the internet. crosskill calls these paths toxic flows and shows the file and line behind each
 step.
 
-![Three toxic combinations. 1: env-reader reads .env, notify-webhook posts to a webhook, so your secrets can be posted to someone's server. 2: web-summarizer follows setup steps found on a web page, so whoever writes the page runs code on your machine. 3: mail-triage reads mail, a files MCP server can read ~/work, and mail-triage replies to senders, so one email can get your work files mailed out.](docs/images/toxic-flows.svg)
+![Three toxic combinations. 1: env-reader reads .env, notify-webhook posts to a webhook, so your secrets can be posted to someone's server. 2: web-summarizer follows setup steps found on a web page, so whoever writes the page runs code on your machine. 3: mail-triage reads mail, a files MCP server can read ~/work, and mail-triage replies to senders, so one email can get your work files mailed out.](https://raw.githubusercontent.com/idanbe/cross-skill-guard/main/docs/images/toxic-flows.svg)
 
 These three come from the test corpus (`corpus/toxic/001` to `003`). They show the three kinds
 of flow crosskill looks for:
@@ -77,7 +77,7 @@ quoted text. `[llm]` marks a fact the LLM extractor found.
 With the guard on, Claude can still use both skills. It just can't send anything out after it
 has read `.env`:
 
-![A Claude Code session with the guard on. Bash curl to the webhook: allowed. Read .env: allowed, and nothing may leave from now on. Bash curl @summary.txt to the webhook: blocked, and Claude gets the reason with the rule, the earlier Read .env, and the file:line evidence from the scan.](docs/images/guard-blocks.svg)
+![A Claude Code session with the guard on. Bash curl to the webhook: allowed. Read .env: allowed, and nothing may leave from now on. Bash curl @summary.txt to the webhook: blocked, and Claude gets the reason with the rule, the earlier Read .env, and the file:line evidence from the scan.](https://raw.githubusercontent.com/idanbe/cross-skill-guard/main/docs/images/guard-blocks.svg)
 
 ## Scan a project
 
