@@ -119,11 +119,13 @@ def audit_permissions(
     path: Annotated[Path, typer.Argument(help="Installation directory to audit")] = Path("."),
 ) -> None:
     """Find Bash allow rules that let a dangerous program run behind a wrapper. Exits 1 when any do."""
-    from crosskill.audit import audit
-    from crosskill.audit import to_text as audit_text
+    from crosskill.audit import audit, to_text
 
+    if not path.is_dir():  # a typo must not read as "no bypasses": this is a security gate
+        typer.echo(f"not a directory: {path}", err=True)
+        raise typer.Exit(code=2)
     grants = audit(path)
-    typer.echo(audit_text(grants))
+    typer.echo(to_text(grants))
     raise typer.Exit(code=1 if grants else 0)
 
 

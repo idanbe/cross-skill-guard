@@ -1,4 +1,6 @@
 import json
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -123,3 +125,15 @@ def test_audit_command_exit_codes():
     assert found.exit_code == 1 and "curl" in found.output and "Bash(git:*)" in found.output
     clean = r.invoke(app, ["audit-permissions", str(FIX / "tight")])
     assert clean.exit_code == 0 and "no bypasses" in clean.output.lower()
+
+
+def test_audit_command_missing_path_is_an_error():
+    result = CliRunner().invoke(app, ["audit-permissions", "/nonexistent/typo"])
+    assert result.exit_code != 0
+    assert "no bypasses found" not in result.output
+
+
+def test_audit_import_keeps_z3_out_of_cli():
+    # the lazy import is a binding constraint: z3 costs ~180 ms, so cli must not load it at import
+    code = "import sys, crosskill.cli; sys.exit(0 if 'z3' not in sys.modules else 1)"
+    assert subprocess.run([sys.executable, "-c", code], check=False).returncode == 0

@@ -170,8 +170,7 @@ def to_text(grants: list[Grant]) -> str:
     lines: list[str] = []
     seen: set[tuple] = set()
     for g in grants:
-        m = re.search(r"\[bypass: ([^\]]+)\]$", g.quote)  # egress grants keep the program here
-        prog = m[1] if m else g.arg
+        prog = re.search(r"\[bypass: ([^\]]+)\]$", g.quote)[1]  # audit() always appends this
         key = (g.comp, prog, g.kind, g.file, g.line)
         if key not in seen:
             seen.add(key)
