@@ -27,7 +27,9 @@ Node before 22.21 ignores it); its week of own use with no false blocks is still
 economical (two dry runs spent $2.70 warming up 200 popular skills without checking a new
 one). crosskill stays local: `crosskill scan` offers to share each finding as a pre-filled
 GitHub issue; the owner's `approve` label publishes it to `feed/`, and scans print possible
-matches against the feed.
+matches against the feed. Stage 6: `crosskill audit-permissions` (Z3 models the Bash allow/deny
+matcher, enumerates bypass forms, verifies with bashlex, returns `z3` grants; `scan --audit` folds
+them into the toxic-path search).
 
 Langfuse is the local Docker stack from the triage-guard project (http://localhost:3000, project
 `cross-skill-guard`); `.env` holds its keys and is gitignored.
@@ -83,6 +85,10 @@ LTL runtime hooks and user-shared advisories on top of these findings.
   The stage 5 daily-feed design and plan in `docs/superpowers/` are marked superseded.
 - `src/crosskill/scan.py`: grounds and solves, keeps the shortest path per finding, renders the
   file:line chain as text or SARIF. `src/crosskill/cli.py`: typer app.
+- `src/crosskill/audit.py`: Z3 models the Bash allow/deny matcher, enumerates bypass forms (wrappers
+  and shells), verifies each with bashlex, and returns `z3` grants. `scan --audit` folds them into
+  the toxic-path search. The `z3` import is kept lazy (only `cli.py` imports this module, inside the
+  command bodies), so it stays out of the hook and top-level CLI path.
 - `src/crosskill/guard.py`: runtime guard. Each finding fills an LTL template (`G(a → G ¬b)` for
   secret_exfiltration and untrusted_to_execution, `G((O a ∧ O b) → ¬c)` for lethal_trifecta).
   python-statemachine builds the automata at `init` only (importing it takes ~90 ms); hooks step
