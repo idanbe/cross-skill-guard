@@ -4,3 +4,4 @@ Toxic flows that users found with `crosskill scan` and chose to share, newest fi
 
 | Advisory | Published | Flow |
 | --- | --- | --- |
+| [CK-2026-0001](CK-2026-0001.md) | 2026-10-25 | lethal_trifecta: imap-smtp-email |
