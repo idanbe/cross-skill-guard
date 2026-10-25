@@ -103,3 +103,13 @@ def test_safe_rule_is_empty(tmp_path, rule):
 def test_other_settings_files_are_read(tmp_path, where):
     grants = audit(settings(tmp_path, ["Bash(git:*)"], name=where))
     assert grants and all(g.file == where for g in grants)
+
+
+def test_tight_rule_set_has_no_bypass():
+    assert audit(FIX / "tight") == []
+
+
+def test_deny_removes_denied_programs_only():
+    grants = audit(FIX / "deny-cover")
+    assert [g for g in grants if g.kind in ("egress", "untrusted")] == []  # curl & wget denied
+    assert any(g.kind == "executes" and g.arbitrary for g in grants)        # sh/python/node still bypass
