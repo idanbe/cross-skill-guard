@@ -96,13 +96,20 @@ def scan(
     offline: Annotated[bool, typer.Option("--offline", help="Skip the published-advisories lookup")] = False,
     report: Annotated[bool, typer.Option(
         "--report", help="Print a link to share each finding as a GitHub issue, without asking")] = False,
+    audit: Annotated[bool, typer.Option(
+        "--audit", help="Also add Bash permission bypasses found by the z3 audit (slower: loads z3)")] = False,
 ) -> None:
     """Scan an installation for toxic flows. Exits 1 when any finding blocks.
 
     In a terminal, it then asks whether to share the findings: each one opens as a pre-filled
     GitHub issue you review and submit yourself."""
     need_key(no_llm)
-    findings = run_scan(path, None if no_llm else model)
+    extra = None
+    if audit:
+        from crosskill.audit import audit as run_audit  # z3 import is slow: only when asked
+
+        extra = run_audit(path)
+    findings = run_scan(path, None if no_llm else model, extra_grants=extra)
     if policy:
         findings = decide(findings, policy, data, path.resolve().name)
     typer.echo(to_sarif(findings) if sarif else to_text(findings))
@@ -112,6 +119,21 @@ def scan(
     if not sarif:
         share(path, findings, ask=not report)
     raise typer.Exit(code=1 if any(f.get("action", "block") == "block" for f in findings) else 0)
+
+
+@app.command("audit-permissions")
+def audit_permissions(
+    path: Annotated[Path, typer.Argument(help="Installation directory to audit")] = Path("."),
+) -> None:
+    """Find Bash allow rules that let a dangerous program run behind a wrapper. Exits 1 when any do."""
+    from crosskill.audit import audit, to_text
+
+    if not path.is_dir():  # a typo must not read as "no bypasses": this is a security gate
+        typer.echo(f"not a directory: {path}", err=True)
+        raise typer.Exit(code=2)
+    grants = audit(path)
+    typer.echo(to_text(grants))
+    raise typer.Exit(code=1 if grants else 0)
 
 
 @app.command("eval")

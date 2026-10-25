@@ -61,9 +61,10 @@ def finding(atom: clingo.Symbol, grants: list[Grant]) -> tuple[list[int], dict]:
     return ids, {"rule": atom.name, "path": path, **fields, "chain": chain}
 
 
-def scan(root: Path, model: str | None = None) -> list[dict]:
-    """Findings for an install. `model` turns on the LLM extractor; None is static only."""
-    grants = extract(Path(root), model)
+def scan(root: Path, model: str | None = None, extra_grants: list[Grant] | None = None) -> list[dict]:
+    """Findings for an install. `model` turns on the LLM extractor; None is static only.
+    `extra_grants` are added to the extracted ones (for example permission-audit bypasses)."""
+    grants = extract(Path(root), model) + (extra_grants or [])
     ctl = clingo.Control(["--warn=none"])
     ctl.add("base", [], RULES + facts(grants))
     ctl.ground([("base", [])])

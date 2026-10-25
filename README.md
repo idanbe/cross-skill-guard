@@ -82,9 +82,11 @@ has read `.env`:
 ## Scan a project
 
 ```
-crosskill scan path/to/project            # exit 1 when toxic flows are found
-crosskill scan --no-llm path/to/project   # static only, nothing leaves the machine
-crosskill scan --sarif path/to/project    # SARIF 2.1.0 for code scanning tools
+crosskill scan path/to/project               # exit 1 when toxic flows are found
+crosskill scan --no-llm path/to/project      # static only, nothing leaves the machine
+crosskill scan --sarif path/to/project       # SARIF 2.1.0 for code scanning tools
+crosskill audit-permissions path/to/project  # Bash allow-rule bypasses (Z3)
+crosskill scan --audit path/to/project       # include permission bypasses in the scan
 ```
 
 The scan reads skills (`skills/` and `.claude/skills/`), `.mcp.json` and

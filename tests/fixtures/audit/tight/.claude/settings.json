@@ -1,0 +1,1 @@
+{"permissions":{"allow":["Bash(pytest:*)"],"deny":["Bash(curl *)","Bash(wget *)","Bash(bash *)","Bash(sh *)"]}}

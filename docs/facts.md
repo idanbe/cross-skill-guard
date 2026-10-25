@@ -34,7 +34,8 @@ server key, `hook:<Event>`, or permission rule text (for example `WebFetch`).
 ## Provenance
 
 Every fact carries `source`: `{file, line, extractor, quote?}`.
-`extractor` is one of `static`, `llm`, `manual`. LLM facts must include a `quote` from the text.
+`extractor` is one of `static`, `llm`, `manual`, `z3`. `z3` marks a verified Bash allow-rule bypass
+found by `crosskill audit-permissions` or `scan --audit`. LLM facts must include a `quote` from the text.
 Explanations in stage 1 are built from these records, so a fact without provenance is invalid.
 
 ## Classification conventions
@@ -94,7 +95,20 @@ execution. Evals score the same subset (`src/crosskill/evals.py`).
 ## Open questions
 
 - Granularity of file resources (path vs. glob vs. class).
-- How to represent transitive permission grants (stage 6).
+- How to represent transitive permission grants: stage 6 is done. `src/crosskill/audit.py` models
+  the Bash allow/deny matcher in Z3, enumerates the wrapper and shell forms that reach a
+  permitted-but-dangerous program, verifies each with bashlex, and emits `z3` grants.
+  `scan --audit` folds them into the toxic-path search.
+- Known limitations of the audit model (`audit.py`):
+  - `verify()` does not skip option words that take a separate value in runner forms, so it
+    returns None for `docker exec -u root c <cmd>`. This is latent: `audit-permissions` output is
+    unaffected today, because `find_candidates` generates only the fixed `BYPASS_FORMS`, and none
+    of them contains option words. It would matter only if the forms grow option-bearing templates.
+  - Deny rules are matched by substring/glob containment (a command is denied if any part of it
+    matches the glob). This over-denies, so the deny side errs toward false negatives: wrapper or
+    path bypasses of a deny rule can go unreported. The deny side does not produce false
+    positives. On the allow side, a reported bypass is only as sound as the Z3 model of the
+    documented Claude Code Bash matcher, and `verify()` inspects only the candidate command string.
 - Named env vars such as `BAIDU_API_KEY` are not secrets today: 10+ real skills read their own
   API key and send it to their own provider, which is intended. Flagging them needs a notion of
   the key's own domain.
