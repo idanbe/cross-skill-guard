@@ -166,7 +166,8 @@ def audit(root: Path) -> list[Grant]:
 def to_text(grants: list[Grant]) -> str:
     """One line per distinct bypass: the rule, the program it reaches, the kind and file:line."""
     if not grants:
-        return "no bypasses found"
+        return ("no bypasses found (within the modeled invocation forms: absolute path, sh -c, "
+                "git -c, devbox/mise/docker/direnv exec, npx; not a proof the rules are safe)")
     lines: list[str] = []
     seen: set[tuple] = set()
     for g in grants:
