@@ -104,6 +104,13 @@ def test_scan_report_flag_prints_links_and_ci_is_never_asked() -> None:
     assert printed.exit_code == 1 and "https://github.com/idanbe/cross-skill-guard/issues/new" in printed.output
 
 
+def test_share_opens_one_issue_per_advisory_key(capsys) -> None:
+    from crosskill.cli import share
+    f = one(T4)
+    share(T4, [f, f | {"resource": "other"}], ask=False)  # same rule and components: one advisory
+    assert capsys.readouterr().out.count("issues/new") == 1
+
+
 def test_publish_report_command(tmp_path: Path) -> None:
     body = tmp_path / "body.md"
     body.write_text(body_of(feed.issue_url(feed.report(T4, one(T4)))))

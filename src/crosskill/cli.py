@@ -68,14 +68,17 @@ def share(path: Path, findings: list[dict], ask: bool) -> None:
     """Offer to share findings as GitHub issues. Asking needs a terminal; CI never sees it."""
     from crosskill import feed
 
-    reports = [r for f in findings if (r := feed.report(path, f))]
+    reports: dict[str, dict] = {}  # findings that differ only in private data share one advisory
+    for f in findings:
+        if r := feed.report(path, f):
+            reports.setdefault(feed.key(r["rule"], r["components"]), r)
     if not reports or (ask and not (sys.stdin.isatty() and sys.stdout.isatty())):
         return
     q = (f"\nShare {len(reports)} finding(s) with the crosskill feed? Each opens as a GitHub issue "
          "you review before submitting")
     if ask and not typer.confirm(q, default=False):
         return
-    for r in reports:
+    for r in reports.values():
         url = feed.issue_url(r)
         typer.echo(url)
         if ask:
