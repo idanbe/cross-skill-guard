@@ -110,11 +110,12 @@ def _approved(candidate: str, allow_arg: str, deny: list[str]) -> bool:
     cmd = z3.String("cmd")
     solver = z3.Solver()
     solver.add(cmd == z3.StringVal(candidate), z3.InRe(cmd, _allow_regex(allow_arg)))
-    for rule in deny:  # a deny rule catches a command that contains its prefix anywhere
+    anything = z3.Full(z3.ReSort(z3.StringSort()))
+    for rule in deny:  # a deny rule catches a command that contains a match of its glob anywhere
         m = RULE.match(rule.strip())
         if m and m[1] == "Bash":
-            prefix = (m[2] or "").removesuffix(":*").removesuffix("*")
-            solver.add(z3.Not(z3.Contains(cmd, z3.StringVal(prefix))))
+            hit = anything if m[2] in (None, "") else z3.Concat(anything, _allow_regex(m[2]), anything)
+            solver.add(z3.Not(z3.InRe(cmd, hit)))
     return solver.check() == z3.sat
 
 
@@ -136,20 +137,26 @@ def find_candidates(allow: list[str], deny: list[str]) -> list[tuple[str, str]]:
 
 
 def audit(root: Path) -> list[Grant]:
-    """One grant per distinct verified bypass of the install's Bash allow rules."""
-    path = root / ".claude" / "settings.json"
-    if not path.exists():
-        return []
-    grants, deny = settings_grants(path, root)
-    rules = {g.rule: g for g in grants if g.rule and g.rule.startswith("Bash(")}
-    found: dict[tuple[str, str], Grant] = {}
+    """Grants for the distinct verified bypasses of the install's Bash allow rules."""
+    rules: dict[str, Grant] = {}
+    deny: list[str] = []
+    for base in (root, root / ".claude"):
+        for name in ("settings.json", "settings.local.json"):
+            if (base / name).exists():
+                grants, denies = settings_grants(base / name, root)
+                deny += denies
+                for g in grants:
+                    if g.rule and g.rule.startswith("Bash("):
+                        rules.setdefault(g.rule, g)
+    found: dict[tuple[str, str], list[Grant]] = {}
     for rule, cmd in find_candidates(list(rules), deny):
         prog = verify(cmd)
         own = (_bash_arg(rule) or "").removesuffix(":*").split(" ")[0]
         if prog is None or prog == own or (rule, prog) in found:
             continue
-        kind = "egress" if bash_caps(prog)[-1][0] == "egress" else "executes"
         src = rules[rule]
-        found[(rule, prog)] = Grant(rule, kind, prog, src.file, src.line, src.quote, rule,
-                                    True, extractor="z3")
-    return list(found.values())
+        quote = f"{src.quote}  [bypass: {prog}]"
+        found[(rule, prog)] = [
+            Grant(rule, c[0], c[1], src.file, src.line, quote, rule, True, extractor="z3")
+            for c in bash_caps(prog)]
+    return [g for grants in found.values() for g in grants]
