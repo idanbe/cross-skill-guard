@@ -11,8 +11,10 @@ from crosskill.extract import ARBITRARY, NETWORK
 
 DOWNLOADERS = {"npx"}  # runs arbitrary downloaded code, so it is the finding itself
 SHELLS = {"sh", "bash", "zsh"}
-# Runner -> number of words between the runner and the command it runs (devbox run, docker exec c).
-RUNNERS = {"devbox": 1, "mise": 1, "direnv": 2, "docker": 2}
+# Runner -> subcommands that run a command. Options (and mise TOOL@VER args) are skipped, then
+# POSITIONAL words (docker container, direnv dir) before the command itself.
+RUNNERS = {"devbox": {"run"}, "mise": {"exec", "x"}, "docker": {"exec"}, "direnv": {"exec"}}
+POSITIONAL = {"docker": 1, "direnv": 1}
 
 
 def verify(command: str) -> str | None:
@@ -50,10 +52,21 @@ def _resolve(words: list[str]) -> str | None:
                 inner = verify(value.split("=", 1)[1])
                 break
     elif prog in RUNNERS:
-        inner = _resolve(words[RUNNERS[prog] + 1:])
+        inner = _resolve(_runner_command(prog, words[1:]))
     if inner:
         return inner
     for name in (" ".join([prog, *words[1:2]]), prog):  # "pip install" is one entry
         if name in ARBITRARY | NETWORK:
             return name
     return None
+
+
+def _runner_command(prog: str, args: list[str]) -> list[str]:
+    """The words a runner runs after its subcommand, or [] when the subcommand does not run one."""
+    if not args or args[0] not in RUNNERS[prog]:
+        return []
+    rest = args[1:]
+    i = 0
+    while i < len(rest) and (rest[i].startswith("-") or (prog == "mise" and "@" in rest[i])):
+        i += 1
+    return rest[i + POSITIONAL.get(prog, 0):]
